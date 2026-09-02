@@ -1,6 +1,20 @@
 /**
- * Pars Yabancı Dil Kursları - Portal State & Logic Manager v3.0
+ * Pars Yabancı Dil Kursları - Portal State & Logic Manager v3.0 (Supabase Bulut Entegreli)
  */
+
+// SUPABASE BULUT VERİTABANI BAĞLANTI BİLGİLERİ
+const SUPABASE_URL = "https://qytakuqgkegwkgdhthuv.supabase.co";
+const SUPABASE_KEY = "sb_publishable_QlpYBTINrpy8rdXMZ1SmGQ_q2n0ZuIz";
+
+let supabaseClient = null;
+if (window.supabase) {
+    try {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("⚡ Supabase Bulut Veritabanı Bağlantısı Başarılı!");
+    } catch (e) {
+        console.error("Supabase init error:", e);
+    }
+}
 
 // Initial Default Mock Data with Accounts & Roles
 const INITIAL_DATA = {
@@ -237,7 +251,7 @@ class AppState {
         this.init();
     }
 
-    init() {
+    async init() {
         const dateInput = document.getElementById('globalAttendanceDate');
         if (dateInput) {
             dateInput.value = this.selectedDate;
@@ -246,9 +260,154 @@ class AppState {
         this.renderAuthHeader();
         this.renderView();
         
+        // Supabase Cloud Sync & Realtime Subscription
+        await this.syncDataFromSupabase();
+        this.setupRealtimeSubscription();
+
         setTimeout(() => {
             if (window.lucide) window.lucide.createIcons();
         }, 50);
+    }
+
+    // SUPABASE CLOUD DATABASE SYNC & PERSISTENCE
+    async syncDataFromSupabase() {
+        if (!supabaseClient) return;
+
+        try {
+            const [
+                usersRes,
+                branchesRes,
+                classesRes,
+                studentsRes,
+                curriculumRes,
+                homeworksRes,
+                exportRes
+            ] = await Promise.all([
+                supabaseClient.from('users').select('*'),
+                supabaseClient.from('branches').select('*'),
+                supabaseClient.from('classes').select('*'),
+                supabaseClient.from('students').select('*'),
+                supabaseClient.from('curriculum').select('*'),
+                supabaseClient.from('homeworks').select('*'),
+                supabaseClient.from('export_settings').select('*')
+            ]);
+
+            let hasCloudData = false;
+
+            if (usersRes.data && usersRes.data.length > 0) {
+                this.data.users = usersRes.data;
+                hasCloudData = true;
+            }
+            if (branchesRes.data && branchesRes.data.length > 0) {
+                this.data.branches = branchesRes.data;
+                hasCloudData = true;
+            }
+            if (classesRes.data && classesRes.data.length > 0) {
+                this.data.classes = classesRes.data;
+                hasCloudData = true;
+            }
+            if (studentsRes.data && studentsRes.data.length > 0) {
+                this.data.students = studentsRes.data;
+                hasCloudData = true;
+            }
+            if (curriculumRes.data && curriculumRes.data.length > 0) {
+                this.data.curriculum = curriculumRes.data;
+                hasCloudData = true;
+            }
+            if (homeworksRes.data && homeworksRes.data.length > 0) {
+                this.data.homeworks = homeworksRes.data;
+                hasCloudData = true;
+            }
+            if (exportRes.data && exportRes.data.length > 0) {
+                const setting = exportRes.data[0];
+                this.data.exportSettings = { savePath: setting.savePath || setting.save_path || 'C:\\Pars_Yoklama_Raporlari\\' };
+                hasCloudData = true;
+            }
+
+            // If Supabase database is newly created and empty, auto-seed initial data
+            if (!hasCloudData) {
+                await this.seedInitialDataToSupabase();
+            } else {
+                this.saveLocalData();
+                this.renderAuthHeader();
+                if (this.currentView === 'landing') this.renderLandingScreen();
+                else if (this.currentView === 'branch') this.renderBranchScreen();
+                else if (this.currentView === 'classDetail') this.renderClassDetailScreen();
+            }
+        } catch (err) {
+            console.error("Supabase fetch error:", err);
+        }
+    }
+
+    async seedInitialDataToSupabase() {
+        if (!supabaseClient) return;
+
+        try {
+            console.log("☁️ Supabase bulut veritabanına başlangıç verileri yükleniyor...");
+            await Promise.all([
+                supabaseClient.from('users').upsert(INITIAL_DATA.users),
+                supabaseClient.from('branches').upsert(INITIAL_DATA.branches),
+                supabaseClient.from('classes').upsert(INITIAL_DATA.classes),
+                supabaseClient.from('students').upsert(INITIAL_DATA.students),
+                supabaseClient.from('curriculum').upsert(INITIAL_DATA.curriculum),
+                supabaseClient.from('homeworks').upsert(INITIAL_DATA.homeworks),
+                supabaseClient.from('export_settings').upsert([{ id: 'main', savePath: 'C:\\Pars_Yoklama_Raporlari\\' }])
+            ]);
+            console.log("⚡ Supabase verileri kuruldu ve eşcellendi!");
+        } catch (e) {
+            console.error("Supabase seed error:", e);
+        }
+    }
+
+    setupRealtimeSubscription() {
+        if (!supabaseClient) return;
+
+        try {
+            supabaseClient
+                .channel('public_db_changes')
+                .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+                    console.log("⚡ Supabase Canlı Veri Değişikliği:", payload);
+                    this.syncDataFromSupabase();
+                })
+                .subscribe();
+        } catch (e) {
+            console.warn("Supabase Realtime subscription error:", e);
+        }
+    }
+
+    saveLocalData() {
+        try {
+            localStorage.setItem('PARS_PORTAL_DATA_V3', JSON.stringify(this.data));
+        } catch (e) {
+            console.error("Local storage save error:", e);
+        }
+    }
+
+    saveData() {
+        // 1. Instant local persistence
+        this.saveLocalData();
+
+        // 2. Async cloud sync to Supabase
+        this.syncAllToSupabase();
+    }
+
+    async syncAllToSupabase() {
+        if (!supabaseClient) return;
+
+        try {
+            const promises = [];
+            if (this.data.users?.length) promises.push(supabaseClient.from('users').upsert(this.data.users));
+            if (this.data.branches?.length) promises.push(supabaseClient.from('branches').upsert(this.data.branches));
+            if (this.data.classes?.length) promises.push(supabaseClient.from('classes').upsert(this.data.classes));
+            if (this.data.students?.length) promises.push(supabaseClient.from('students').upsert(this.data.students));
+            if (this.data.curriculum?.length) promises.push(supabaseClient.from('curriculum').upsert(this.data.curriculum));
+            if (this.data.homeworks?.length) promises.push(supabaseClient.from('homeworks').upsert(this.data.homeworks));
+            if (this.data.exportSettings) promises.push(supabaseClient.from('export_settings').upsert([{ id: 'main', savePath: this.data.exportSettings.savePath || 'C:\\Pars_Yoklama_Raporlari\\' }]));
+
+            await Promise.all(promises);
+        } catch (e) {
+            console.error("Supabase sync save error:", e);
+        }
     }
 
     // Local Storage Persistence
@@ -310,14 +469,6 @@ class AppState {
         }
 
         return data;
-    }
-
-    saveData() {
-        try {
-            localStorage.setItem('PARS_PORTAL_DATA_V3', JSON.stringify(this.data));
-        } catch (e) {
-            console.error("Local storage save error:", e);
-        }
     }
 
     resetToDefaultMockData() {
@@ -939,6 +1090,12 @@ class AppState {
         if (confirm(`'${cls.name}' sınıfını silmek istediğinizden emin misiniz?`)) {
             this.data.classes = this.data.classes.filter(c => c.id !== classId);
             this.data.students = this.data.students.filter(s => s.classId !== classId);
+
+            if (supabaseClient) {
+                supabaseClient.from('classes').delete().eq('id', classId);
+                supabaseClient.from('students').delete().eq('classId', classId);
+            }
+
             this.saveData();
             this.showToast("Sınıf ve bağlı kayıtlar silindi.", "info");
             this.renderBranchScreen();
@@ -1456,6 +1613,7 @@ class AppState {
 
         if (confirm(`'${item.topic}' müfredat konusunu silmek istediğinizden emin misiniz?`)) {
             this.data.curriculum = this.data.curriculum.filter(c => c.id !== currId);
+            if (supabaseClient) supabaseClient.from('curriculum').delete().eq('id', currId);
             this.saveData();
             this.showToast("Müfredat konusu silindi.", "info");
             this.renderCurriculumList();
@@ -1657,6 +1815,7 @@ class AppState {
 
         if (confirm(`'${item.title}' ödevini ve dosyasını silmek istediğinizden emin misiniz?`)) {
             this.data.homeworks = this.data.homeworks.filter(h => h.id !== hwId);
+            if (supabaseClient) supabaseClient.from('homeworks').delete().eq('id', hwId);
             this.saveData();
             this.showToast("Ödev ve bağlı dosya silindi.", "info");
             this.renderHomeworkList();
@@ -1989,6 +2148,7 @@ class AppState {
 
         if (confirm(`'${student.name}' adlı öğrenci kaydını silmek istediğinize emin misiniz?`)) {
             this.data.students = this.data.students.filter(s => s.id !== studentId);
+            if (supabaseClient) supabaseClient.from('students').delete().eq('id', studentId);
             this.saveData();
             this.showToast("Öğrenci kaydı silindi.", "info");
             this.filterStudents();
@@ -2342,6 +2502,7 @@ class AppState {
 
         if (confirm(`'${u.name}' öğretmen hesabını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) {
             this.data.users = this.data.users.filter(usr => usr.id !== userId);
+            if (supabaseClient) supabaseClient.from('users').delete().eq('id', userId);
             
             // If deleted teacher was logged in, log out
             if (this.data.currentUser && this.data.currentUser.id === userId) {
