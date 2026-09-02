@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pars Yabancı Dil Kursları | Öğretmen & Yönetici Portalı</title>
+    <meta name="description" content="Pars Yabancı Dil Kursları için modern, modüler ve responsive öğretmen yoklama ve yönetim sistemi.">
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                            gold: '#f59e0b',
+                            accent: '#6366f1'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- SheetJS (XLSX) Excel Export CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="min-h-full font-sans antialiased bg-slate-950 text-slate-100 flex flex-col selection:bg-teal-500 selection:text-white">
+
+    <!-- TOP HEADER -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 shadow-lg shadow-black/20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                
+                <!-- Logo & Academy Title -->
+                <div class="flex items-center space-x-3 cursor-pointer group" onclick="appState.navigateTo('landing')">
+                    <div class="relative flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-slate-900 via-teal-900 to-indigo-900 p-0.5 shadow-md shadow-teal-900/30 group-hover:scale-105 transition-transform duration-300">
+                        <img src="assets/logo.png" alt="Pars Logo" class="w-full h-full object-contain rounded-lg">
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-heading font-extrabold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-teal-400 bg-clip-text text-transparent">
+                                PARS
+                            </span>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-400 border border-teal-500/30">PORTAL</span>
+                        </div>
+                        <p class="text-xs text-slate-400 font-medium tracking-wide">Yabancı Dil Kursları</p>
+                    </div>
+                </div>
+
+                <!-- Admin Button + Auth Profile Header -->
+                <div class="flex items-center space-x-3">
+                    
+                    <!-- ADMIN ONLY BUTTON -->
+                    <button id="adminTeacherMgmtBtn" onclick="appState.openTeacherMgmtModal()" 
+                            class="hidden inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all shadow-md">
+                        <i data-lucide="settings" class="w-4 h-4 text-amber-400 animate-spin-slow"></i>
+                        <span>⚙️ Öğretmen Yönetimi</span>
+                    </button>
+
+                    <!-- User Profile / Auth Header Area -->
+                    <div id="authHeaderArea" class="flex items-center">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- BREADCRUMB & NAVIGATION BAR -->
+    <div id="breadcrumbBar" class="hidden bg-slate-900/50 border-b border-slate-800/50 py-3 px-4 sm:px-8 shadow-inner">
+        <div class="max-w-7xl mx-auto flex items-center justify-between text-sm text-slate-400">
+            <nav class="flex items-center space-x-2 overflow-x-auto" aria-label="Breadcrumb">
+                <button onclick="appState.navigateTo('landing')" class="flex items-center space-x-1 hover:text-teal-400 transition-colors font-medium">
+                    <i data-lucide="home" class="w-4 h-4"></i>
+                    <span>Ana Sayfa</span>
+                </button>
+                <span id="bcBranchSep" class="hidden text-slate-600">/</span>
+                <button id="bcBranchBtn" onclick="appState.navigateTo('branch')" class="hidden flex items-center space-x-1 hover:text-teal-400 transition-colors font-medium">
+                    <i data-lucide="building-2" class="w-4 h-4 text-teal-400"></i>
+                    <span id="bcBranchName">Şube</span>
+                </button>
+                <span id="bcClassSep" class="hidden text-slate-600">/</span>
+                <span id="bcClassName" class="hidden font-semibold text-teal-300 flex items-center space-x-1">
+                    <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i>
+                    <span id="bcClassText">Sınıf</span>
+                </span>
+            </nav>
+
+            <button onclick="appState.goBack()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-xs font-semibold border border-slate-700">
+                <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                <span>Geri Dön</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT VIEW CONTAINERS -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- EKRAN 1: ANA GİRİŞ & ŞUBE SEÇİMİ EKRANI -->
+        <section id="viewLanding" class="space-y-10">
+            
+            <!-- Hero Banner & Welcome -->
+            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-slate-800/80 p-8 sm:p-12 shadow-2xl">
+                <div class="absolute -right-20 -bottom-20 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -left-20 -top-20 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="relative z-10 max-w-3xl space-y-4">
+                    <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs font-semibold">
+                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-teal-400"></i>
+                        <span>Yetkili Öğretmen & Yönetici Portalı v3.0</span>
+                    </div>
+                    <h1 class="font-heading text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
+                        Pars Yabancı Dil Kursları <br>
+                        <span class="bg-gradient-to-r from-teal-400 via-indigo-300 to-sky-400 bg-clip-text text-transparent">
+                            Şube & Sınıf Yönetim Portalı
+                        </span>
+                    </h1>
+                    <p class="text-slate-300 text-base sm:text-lg leading-relaxed font-normal">
+                        Lütfen işlem yapmak istediğiniz şubeyi seçin. Sınıfları ve öğrencileri görüntüleyebilmek için hesabınızla giriş yapmış olmanız gerekmektedir.
+                    </p>
+
+                    <!-- Quick Stats & Auth Status Indicator -->
+                    <div class="pt-4 flex flex-wrap gap-4 text-xs font-medium text-slate-300">
+                        <div class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                            <i data-lucide="building" class="w-4 h-4 text-teal-400"></i>
+                            <span>2 Aktif Şube</span>
+                        </div>
+                        <div class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                            <i data-lucide="book-open" class="w-4 h-4 text-indigo-400"></i>
+                            <span id="landingTotalClasses">6 Eğitim Sınıfı</span>
+                        </div>
+                        <div class="flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-800">
+                            <i data-lucide="user-check" class="w-4 h-4 text-emerald-400"></i>
+                            <span id="landingTotalStudents">64 Kayıtlı Öğrenci</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ŞUBE SEÇİMİ (Gaziemir vs Alsancak) -->
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="font-heading text-2xl font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="map-pin" class="w-6 h-6 text-teal-400"></i>
+                            <span>Eğitim Şubelerimiz</span>
+                        </h2>
+                        <p class="text-sm text-slate-400">Giriş yaptıktan sonra yetkili olduğunuz şubeye tıklayarak sınıflara erişebilirsiniz.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="branchCardsContainer">
+                    <!-- Dynamic Branch Cards Rendered Here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- EKRAN 2: ŞUBE İÇERİĞİ VE SINIF LİSTESİ EKRANI -->
+        <section id="viewBranch" class="hidden space-y-8">
+            <!-- Selected Branch Header Banner -->
+            <div id="branchHeaderCard" class="relative overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 shadow-xl">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Class Controls & CRUD Header -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+                <div class="flex items-center space-x-3 w-full sm:w-auto">
+                    <div class="relative flex-1 sm:w-72">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="classSearchInput" placeholder="Sınıf veya seviye ara..." 
+                               oninput="appState.filterClasses(this.value)"
+                               class="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all">
+                    </div>
+                </div>
+
+                <button id="addClassBtn" onclick="appState.openAddClassModal()" 
+                        class="hidden w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-teal-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    <i data-lucide="plus-circle" class="w-5 h-5"></i>
+                    <span>Yeni Sınıf Ekle</span>
+                </button>
+            </div>
+
+            <!-- Class Cards Grid -->
+            <div id="classListGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Rendered Dynamically -->
+            </div>
+        </section>
+
+        <!-- EKRAN 3: SINIF DETAY VE TABLI YÖNETİM EKRANI -->
+        <section id="viewClassDetail" class="hidden space-y-6">
+            <!-- Class Detail Info Banner -->
+            <div id="classDetailBanner" class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-xl">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <!-- CLASS NAVIGATION TABS BAR -->
+            <div class="flex items-center space-x-2 border-b border-slate-800 pb-3 overflow-x-auto">
+                <button id="tabBtnYoklama" onclick="appState.switchClassTab('yoklama')"
+                        class="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-teal-600 text-white shadow-lg shadow-teal-600/30 shrink-0">
+                    <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                    <span>📋 Yoklama Tablosu</span>
+                </button>
+                <button id="tabBtnMufredat" onclick="appState.switchClassTab('mufredat')"
+                        class="px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 shrink-0">
+                    <i data-lucide="book-open" class="w-4 h-4 text-indigo-400"></i>
+                    <span>📚 Müfredat & Plan</span>
+                </button>
+                <button id="tabBtnOdev" onclick="appState.switchClassTab('odev')"
+                        class="px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 shrink-0">
+                    <i data-lucide="file-text" class="w-4 h-4 text-amber-400"></i>
+                    <span>📝 Ödevler & Materyaller</span>
+                </button>
+                <button id="tabBtnSinav" onclick="appState.switchClassTab('sinav')"
+                        class="px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800 shrink-0">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 text-purple-400"></i>
+                    <span>📊 Sınav Notları & Ödev Analizi</span>
+                </button>
+            </div>
+
+            <!-- TAB PANEL 1: YOKLAMA (ATTENDANCE) -->
+            <div id="tabPanelYoklama" class="space-y-6">
+                <!-- Table Filter & Actions Bar -->
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        
+                        <!-- Search & Filters -->
+                        <div class="flex flex-wrap items-center gap-3 flex-1">
+                            <!-- Student Search -->
+                            <div class="relative w-full sm:w-64">
+                                <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                <input type="text" id="studentSearchInput" placeholder="Öğrenci adı ara..." 
+                                       oninput="appState.filterStudents()"
+                                       class="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-all">
+                            </div>
+
+                            <!-- Skill Filter -->
+                            <div class="w-full sm:w-44">
+                                <select id="skillFilterSelect" onchange="appState.filterStudents()" 
+                                        class="w-full py-2 px-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-300 focus:outline-none focus:border-teal-500">
+                                    <option value="ALL">Tüm Beceriler</option>
+                                    <option value="Reading">Reading (Okuma)</option>
+                                    <option value="Listening">Listening (Dinleme)</option>
+                                    <option value="Speaking">Speaking (Konuşma)</option>
+                                    <option value="Writing">Writing (Yazma)</option>
+                                </select>
+                            </div>
+
+                            <!-- Attendance Filter -->
+                            <div class="w-full sm:w-44">
+                                <select id="attendanceFilterSelect" onchange="appState.filterStudents()" 
+                                        class="w-full py-2 px-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-300 focus:outline-none focus:border-teal-500">
+                                    <option value="ALL">Tüm Yoklamalar</option>
+                                    <option value="Geldi">Geldi (Katıldı)</option>
+                                    <option value="Gelmedi">Gelmedi (Katılmadı)</option>
+                                </select>
+                            </div>
+
+                            <!-- Datepicker Input -->
+                            <div class="w-full sm:w-48 flex items-center space-x-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+                                <i data-lucide="calendar" class="w-4 h-4 text-teal-400 shrink-0"></i>
+                                <input type="date" id="globalAttendanceDate" onchange="appState.changeSelectedDate(this.value)"
+                                       class="bg-transparent text-sm text-white focus:outline-none w-full border-none">
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex items-center space-x-3 w-full sm:w-auto">
+                            <button onclick="appState.exportExcel()" 
+                                    class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md shadow-emerald-600/30 transition-all hover:scale-[1.02]">
+                                <i data-lucide="file-spreadsheet" class="w-4 h-4 text-white"></i>
+                                <span>📊 Yoklamayı Tamamla & Excel'e Aktar</span>
+                            </button>
+
+                            <button id="addStudentBtn" onclick="appState.openAddStudentModal()" 
+                                    class="hidden inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-sm shadow-md shadow-teal-600/30 transition-all hover:scale-[1.02]">
+                                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                                <span>Yeni Öğrenci Ekle</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Batch Actions Bar -->
+                    <div class="pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+                        <div class="flex items-center space-x-2">
+                            <span class="font-medium text-slate-300">Hızlı Toplu İşlem:</span>
+                            <button onclick="appState.setAllAttendance('Geldi')" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 font-medium transition-all">
+                                ✓ Tümünü Geldi İşaretle
+                            </button>
+                            <button onclick="appState.setAllAttendance('Gelmedi')" class="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 font-medium transition-all">
+                                ✕ Tümünü Gelmedi İşaretle
+                            </button>
+                        </div>
+                        <span id="filteredCountBadge" class="font-semibold text-slate-300"></span>
+                    </div>
+                </div>
+
+                <!-- STUDENT TABLE -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse" id="studentsTable">
+                            <thead>
+                                <tr class="bg-slate-950/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <th class="py-4 px-6">Ad Soyad</th>
+                                    <th class="py-4 px-4">Sınıfı</th>
+                                    <th class="py-4 px-4">Yaşı</th>
+                                    <th class="py-4 px-4">Beceri (Skill)</th>
+                                    <th class="py-4 px-4">Tarih</th>
+                                    <th class="py-4 px-6 text-center">Yoklama Durumu</th>
+                                    <th class="py-4 px-6 text-right">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentTableBody" class="divide-y divide-slate-800/60 text-sm">
+                                <!-- Dynamic Student Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Table Footer Stats -->
+                    <div class="bg-slate-950/60 px-6 py-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                        <div class="flex items-center space-x-4">
+                            <span class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> <span>Geldi: <strong id="statPresentCount" class="text-white">0</strong></span></span>
+                            <span class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> <span>Gelmedi: <strong id="statAbsentCount" class="text-white">0</strong></span></span>
+                        </div>
+                        <div id="attendancePercentageBadge" class="font-semibold px-3 py-1 rounded-full bg-slate-800 text-teal-300">
+                            Katılım Oranı: %0
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB PANEL 2: MÜFREDAT (CURRICULUM) -->
+            <div id="tabPanelMufredat" class="hidden space-y-6">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 class="font-heading text-lg font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i>
+                            <span>Sınıf Müfredatı ve Konu İlerleme Planı</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Öğretmenler kendi müfredat konularını ekleyip düzenleyebilir. Diğer öğretmenlerin müfredat konuları salt okunur olarak görüntülenebilir.</p>
+                    </div>
+                    <button id="addCurriculumBtn" onclick="appState.openAddCurriculumModal()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition-all flex items-center space-x-1.5">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Yeni Müfredat Konusu Ekle</span>
+                    </button>
+                </div>
+
+                <!-- Curriculum Grid -->
+                <div id="curriculumListGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Rendered Dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB PANEL 3: ÖDEVLER & DOSYALAR (HOMEWORK & FILES) -->
+            <div id="tabPanelOdev" class="hidden space-y-6">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 class="font-heading text-lg font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="file-text" class="w-5 h-5 text-amber-400"></i>
+                            <span>Sınıf Ödevleri ve İndirilebilir Ders Materyalleri</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Öğretmenler bilgisayarlarından her türlü dosya formatını (.pdf, .docx, .zip, .png vb.) yükleyebilir. Dosyalar tüm kullanıcılar tarafından indirilebilir.</p>
+                    </div>
+                    <button id="addHomeworkBtn" onclick="appState.openAddHomeworkModal()" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md shadow-amber-600/30 transition-all flex items-center space-x-1.5">
+                        <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                        <span>Yeni Ödev / Dosya Yükle</span>
+                    </button>
+                </div>
+
+                <!-- Homework Grid -->
+                <div id="homeworkListGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Rendered Dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB PANEL 4: SINAV NOTLARI & ÖDEV ANALİZİ (EXAM GRADES & ANALYSIS) -->
+            <div id="tabPanelSinav" class="hidden space-y-6">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 class="font-heading text-lg font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i>
+                            <span>Sınav Notları, Dönem Değerlendirmesi ve Ödev Analizi</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Öğrencilerin dönem ortası, sene sonu notları, en fazla 300 karakterlik ödev analizleri ve özel indirilebilir dosyaları.</p>
+                    </div>
+                </div>
+
+                <!-- EXAM GRADES & HOMEWORK ANALYSIS TABLE -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse" id="examGradesTable">
+                            <thead>
+                                <tr class="bg-slate-950/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                    <th class="py-4 px-6">Öğrenci</th>
+                                    <th class="py-4 px-4">Şube / Sınıf</th>
+                                    <th class="py-4 px-4 text-center">Dönem Ortası</th>
+                                    <th class="py-4 px-4 text-center">Sene Sonu</th>
+                                    <th class="py-4 px-6">Ödev Analizi & Yorum (Max 300 Karakter)</th>
+                                    <th class="py-4 px-6 text-center">Öğrenciye Özel Dosya</th>
+                                    <th class="py-4 px-6 text-right">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody id="examGradesTableBody" class="divide-y divide-slate-800/60 text-sm">
+                                <!-- Dynamic Exam & Analysis Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="mt-auto bg-slate-950 border-t border-slate-800/80 py-6 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-2">
+                <img src="assets/logo.png" alt="Pars Logo" class="w-6 h-6 object-contain">
+                <span>© 2026 Pars Yabancı Dil Kursları. Tüm Hakları Saklıdır.</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="appState.resetToDefaultMockData()" class="hover:text-teal-400 underline transition-colors">
+                    Örnek Verileri Sıfırla
+                </button>
+                <span>|</span>
+                <span>Alsancak & Gaziemir Şubeleri</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL 0: GİRİŞ YAPMA UYARISI / MODALI (Protected Route Alert Modal) -->
+    <div id="loginPromptModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6 text-center animate-in fade-in zoom-in duration-200">
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+                <i data-lucide="lock" class="w-8 h-8"></i>
+            </div>
+            <div class="space-y-2">
+                <h3 class="font-heading text-2xl font-bold text-white">Giriş Yapılması Gerekiyor</h3>
+                <p class="text-sm text-slate-400 leading-relaxed">
+                    Şube içeriklerini ve sınıfları görüntüleyebilmek için yetkili öğretmen veya yönetici hesabınızla giriş yapmalısınız.
+                </p>
+            </div>
+
+            <!-- Quick Account Selector Buttons -->
+            <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 text-left">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Hızlı Test Girişleri:</span>
+                <button onclick="appState.quickLogin('admin', 'admin123')" class="w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-between text-xs text-white transition-all">
+                    <span class="flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                        <span class="font-bold">Yönetici (admin)</span>
+                    </span>
+                    <span class="text-slate-500 font-mono">admin123</span>
+                </button>
+                <button onclick="appState.quickLogin('ahmetyilmaz', '12345')" class="w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-between text-xs text-white transition-all">
+                    <span class="flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-teal-400"></span>
+                        <span>Ahmet Yılmaz (Gaziemir)</span>
+                    </span>
+                    <span class="text-slate-500 font-mono">12345</span>
+                </button>
+                <button onclick="appState.quickLogin('elifdemir', '12345')" class="w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-between text-xs text-white transition-all">
+                    <span class="flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                        <span>Elif Demir (Alsancak)</span>
+                    </span>
+                    <span class="text-slate-500 font-mono">12345</span>
+                </button>
+                <button onclick="appState.quickLogin('a2-201', '12345')" class="w-full p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-between text-xs text-white transition-all">
+                    <span class="flex items-center space-x-2">
+                        <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                        <span class="font-bold">🎓 Öğrenci Girişi (A2-201 Sınıfı)</span>
+                    </span>
+                    <span class="text-slate-500 font-mono">12345</span>
+                </button>
+            </div>
+
+            <button onclick="appState.closeLoginPromptModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold transition-all">
+                Kapat
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: YÖNETİCİ ÖĞRETMEN YÖNETİMİ MODALI (ADMIN ONLY) -->
+    <div id="teacherMgmtModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
+            
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                        <i data-lucide="shield" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-heading text-xl font-bold text-white">⚙️ Yönetici Kontrol Paneli</h3>
+                        <p class="text-xs text-slate-400">Öğretmen hesaplarını yönetin ve Excel rapor kayıt yollarını tanımlayın.</p>
+                    </div>
+                </div>
+                <button onclick="appState.closeTeacherMgmtModal()" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- TAB / SECTION CONTENT -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <!-- LEFT / TOP: ADD & EDIT TEACHER FORM + EXPORT PATH SETTINGS -->
+                <div class="lg:col-span-1 space-y-6">
+                    
+                    <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+                        <h4 id="teacherFormTitle" class="font-heading text-base font-bold text-teal-300 flex items-center space-x-2">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                            <span>Yeni Öğretmen Ekle</span>
+                        </h4>
+
+                        <form id="teacherForm" onsubmit="appState.handleSaveTeacher(event)" class="space-y-3">
+                            <input type="hidden" id="modalTeacherId">
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Ad Soyad</label>
+                                <input type="text" id="modalTeacherName" required placeholder="ör: Mehmet Kaya"
+                                       class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Profil Fotoğrafı / Avatar</label>
+                                
+                                <div class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-900 border border-slate-800 mb-2">
+                                    <div class="relative group shrink-0">
+                                        <img id="teacherAvatarPreview" src="assets/avatar.png" class="w-12 h-12 rounded-full object-cover border-2 border-teal-500 shadow-md">
+                                        <label for="modalTeacherAvatarFile" class="absolute inset-0 bg-slate-950/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                                            <i data-lucide="camera" class="w-5 h-5 text-white"></i>
+                                        </label>
+                                    </div>
+                                    <div class="flex-1 space-y-1">
+                                        <label for="modalTeacherAvatarFile" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-teal-600/20 hover:bg-teal-600/30 text-teal-300 border border-teal-500/30 text-xs font-semibold cursor-pointer transition-all">
+                                            <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                                            <span>Cihazdan Fotoğraf Yükle</span>
+                                        </label>
+                                        <input type="file" id="modalTeacherAvatarFile" accept="image/*" onchange="appState.handleAvatarFileUpload(event)" class="hidden">
+                                        <p id="teacherAvatarFileName" class="text-[10px] text-slate-400">veya hazır preset / URL seçin</p>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2">
+                                    <select id="modalTeacherAvatarPreset" onchange="appState.selectAvatarPreset(this.value)" class="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-teal-500">
+                                        <option value="assets/avatar.png">👤 Erkek Öğretmen 1 (Mavi)</option>
+                                        <option value="assets/avatar_male2.png">👤 Erkek Öğretmen 2 (Ceketli)</option>
+                                        <option value="assets/avatar_female.png">👩‍🏫 Kadın Öğretmen (Gözlüklü)</option>
+                                        <option value="assets/avatar_admin.png">👔 Yönetici / Kurucu Görseli</option>
+                                        <option value="custom">🌐 Özel Resim URL Linki Gir</option>
+                                    </select>
+
+                                    <input type="text" id="modalTeacherAvatarCustom" placeholder="Özel Fotoğraf URL (https://...)"
+                                           oninput="appState.handleCustomAvatarUrlInput(this.value)"
+                                           class="hidden w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Şube Yetkisi</label>
+                                <select id="modalTeacherBranch" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:border-teal-500">
+                                    <option value="all">Her İki Şube (Tam Yetki)</option>
+                                    <option value="gaziemir">Gaziemir Şubesi</option>
+                                    <option value="alsancak">Alsancak Şubesi</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Kullanıcı Adı</label>
+                                <input type="text" id="modalTeacherUsername" required placeholder="ör: mehmetkaya"
+                                       class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Şifre</label>
+                                <input type="text" id="modalTeacherPassword" required placeholder="ör: 12345"
+                                       class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                            </div>
+
+                            <div class="flex items-center space-x-2 pt-2">
+                                <button type="submit" class="flex-1 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-semibold text-xs transition-all shadow-md">
+                                    Kaydet
+                                </button>
+                                <button type="button" onclick="appState.resetTeacherForm()" class="px-3 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-semibold">
+                                    İptal
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- ADMIN ONLY EXPORT SAVE PATH SETTING CARD -->
+                    <div class="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-3">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="folder-output" class="w-4 h-4 text-amber-400"></i>
+                            <h4 class="font-heading text-xs font-bold text-amber-300 uppercase tracking-wider">📁 Excel Rapor Kayıt Yolu (Admin Özel)</h4>
+                        </div>
+                        <p class="text-[11px] text-slate-400 leading-normal">
+                            Öğretmenler yoklama ekranından Excel çıktısı aldığında, bilgisayarda kaydedilecek hedef yerel klasör yolunu belirleyin.
+                        </p>
+                        <div class="space-y-2">
+                            <input type="text" id="modalExportSavePathInput" placeholder="ör: C:\Pars_Yoklama_Raporlari\" 
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono">
+                            <button onclick="appState.saveExportSavePath()" class="w-full py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all flex items-center justify-center space-x-1.5">
+                                <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                <span>Kayıt Yolunu Güncelle</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: TEACHERS LIST TABLE & CLASS STUDENT ACCOUNTS TABLE -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- TEACHERS TABLE -->
+                    <div class="space-y-3">
+                        <h4 class="font-heading text-base font-bold text-white flex items-center justify-between">
+                            <span>Mevcut Öğretmenler ve Hesaplar</span>
+                            <span id="teacherCountBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-teal-400 font-semibold"></span>
+                        </h4>
+
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-900 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase">
+                                            <th class="py-3 px-4">Öğretmen</th>
+                                            <th class="py-3 px-3">Yetkili Şube</th>
+                                            <th class="py-3 px-3">Kullanıcı Adı / Şifre</th>
+                                            <th class="py-3 px-4 text-right">İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="teacherTableBody" class="divide-y divide-slate-800/80 text-xs">
+                                        <!-- Dynamic Teachers Rendered Here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CLASS STUDENT ACCOUNTS TABLE FOR ADMIN -->
+                    <div class="space-y-3 pt-4 border-t border-slate-800">
+                        <h4 class="font-heading text-base font-bold text-white flex items-center justify-between">
+                            <span class="flex items-center space-x-2">
+                                <i data-lucide="key" class="w-4 h-4 text-sky-400"></i>
+                                <span>🎓 Sınıf Öğrenci Giriş Hesapları (Admin Değiştirebilir)</span>
+                            </span>
+                            <span class="text-[11px] text-slate-400">Her sınıf için 1 giriş hesabı</span>
+                        </h4>
+
+                        <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-900 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase">
+                                            <th class="py-3 px-4">Sınıf Adı</th>
+                                            <th class="py-3 px-3">Şube</th>
+                                            <th class="py-3 px-3">Öğrenci Kullanıcı Adı</th>
+                                            <th class="py-3 px-3">Şifre</th>
+                                            <th class="py-3 px-4 text-right">Düzenle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="classStudentTableBody" class="divide-y divide-slate-800/80 text-xs">
+                                        <!-- Dynamic Class Student Accounts Rendered Here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 1: SINIF EKLE / DÜZENLE MODALI -->
+    <div id="classModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 id="classModalTitle" class="font-heading text-xl font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="book-open" class="w-5 h-5 text-teal-400"></i>
+                    <span>Yeni Sınıf Ekle</span>
+                </h3>
+                <button onclick="appState.closeClassModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="classForm" onsubmit="appState.handleSaveClass(event)" class="space-y-4">
+                <input type="hidden" id="modalClassId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Sınıf Adı</label>
+                    <input type="text" id="modalClassName" required placeholder="ör: B2-101 Hızlandırılmış İngilizce"
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Seviye Bilgisi</label>
+                        <select id="modalClassLevel" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-teal-500">
+                            <option value="A1 Beginner">A1 Beginner</option>
+                            <option value="A2 Elementary">A2 Elementary</option>
+                            <option value="B1 Intermediate">B1 Intermediate</option>
+                            <option value="B2 Upper-Intermediate">B2 Upper-Intermediate</option>
+                            <option value="C1 Advanced">C1 Advanced</option>
+                            <option value="YDS / YÖKDİL">YDS / YÖKDİL</option>
+                            <option value="IELTS / TOEFL">IELTS / TOEFL</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Öğretmen Adı</label>
+                        <input type="text" id="modalClassTeacher" required placeholder="ör: Ahmet Yılmaz"
+                               class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Ders Günleri & Saati</label>
+                    <input type="text" id="modalClassSchedule" placeholder="ör: Pazartesi - Çarşamba 18:30 - 20:30"
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                </div>
+
+                <!-- Student Class Login Credentials -->
+                <div class="p-4 rounded-2xl bg-slate-950/80 border border-slate-800/80 space-y-3">
+                    <span class="text-xs font-bold text-sky-400 uppercase tracking-wider block flex items-center space-x-1.5">
+                        <i data-lucide="key" class="w-3.5 h-3.5"></i>
+                        <span>🎓 Sınıf Öğrenci Giriş Hesap Bilgileri (Tek Hesap)</span>
+                    </span>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Öğrenci Kullanıcı Adı</label>
+                            <input type="text" id="modalClassStudentUsername" placeholder="ör: a2-201"
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-sky-500 font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Öğrenci Şifresi</label>
+                            <input type="text" id="modalClassStudentPassword" placeholder="ör: 12345"
+                                   class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-sky-500 font-mono">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="appState.closeClassModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-semibold transition-all">
+                        İptal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold shadow-lg shadow-teal-600/30 transition-all">
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: ÖĞRENCİ EKLE / DÜZENLE MODALI -->
+    <div id="studentModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 id="studentModalTitle" class="font-heading text-xl font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="user-plus" class="w-5 h-5 text-teal-400"></i>
+                    <span>Yeni Öğrenci Kaydı</span>
+                </h3>
+                <button onclick="appState.closeStudentModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="studentForm" onsubmit="appState.handleSaveStudent(event)" class="space-y-4">
+                <input type="hidden" id="modalStudentId">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Ad Soyad</label>
+                    <input type="text" id="modalStudentName" required placeholder="ör: Mehmet Kaya"
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Sınıfı</label>
+                        <input type="text" id="modalStudentClassText" readonly
+                               class="w-full px-4 py-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-sm text-slate-400 focus:outline-none cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Yaşı</label>
+                        <input type="number" id="modalStudentAge" required min="5" max="99" placeholder="ör: 24"
+                               class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Beceri (Skill)</label>
+                        <select id="modalStudentSkill" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-teal-500">
+                            <option value="Reading">Reading (Okuma)</option>
+                            <option value="Listening">Listening (Dinleme)</option>
+                            <option value="Speaking">Speaking (Konuşma)</option>
+                            <option value="Writing">Writing (Yazma)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Tarih</label>
+                        <input type="date" id="modalStudentDate" required
+                               class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Yoklama Durumu</label>
+                    <select id="modalStudentAttendance" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-teal-500">
+                        <option value="Geldi">Geldi (Yeşil Etiket)</option>
+                        <option value="Gelmedi">Gelmedi (Kırmızı Etiket)</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="appState.closeStudentModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-semibold transition-all">
+                        İptal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold shadow-lg shadow-teal-600/30 transition-all">
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: MÜFREDAT KONUSU EKLE / DÜZENLE MODALI -->
+    <div id="curriculumModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 id="curriculumModalTitle" class="font-heading text-xl font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i>
+                    <span>Yeni Müfredat Konusu Ekle</span>
+                </h3>
+                <button onclick="appState.closeCurriculumModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="curriculumForm" onsubmit="appState.handleSaveCurriculum(event)" class="space-y-4">
+                <input type="hidden" id="modalCurrId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Seviye Bilgisi</label>
+                    <select id="modalCurrLevel" class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-indigo-500">
+                        <option value="A1 Beginner">A1 Beginner</option>
+                        <option value="A2 Elementary">A2 Elementary</option>
+                        <option value="B1 Intermediate">B1 Intermediate</option>
+                        <option value="B2 Upper-Intermediate">B2 Upper-Intermediate</option>
+                        <option value="C1 Advanced">C1 Advanced</option>
+                        <option value="YDS / YÖKDİL">YDS / YÖKDİL</option>
+                        <option value="IELTS / TOEFL">IELTS / TOEFL</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Konu Başlığı</label>
+                    <input type="text" id="modalCurrTopic" required placeholder="ör: Past Perfect Tense & Academic Vocabulary"
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Konu Detayı / İçerik Açıklaması</label>
+                    <textarea id="modalCurrDescription" rows="3" placeholder="ör: Zaman kıyaslamaları, makale okuması ve konuşma kulübü pratikleri."
+                              class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Başlangıç Tarihi</label>
+                        <input type="date" id="modalCurrStartDate" required
+                               class="w-full px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Bitiş Tarihi</label>
+                        <input type="date" id="modalCurrEndDate" required
+                               class="w-full px-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Sorumlu Öğretmen</label>
+                    <input type="text" id="modalCurrTeacher" required readonly
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-slate-300 cursor-not-allowed font-medium">
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="appState.closeCurriculumModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-semibold transition-all">
+                        İptal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all">
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: ÖDEV / DOSYA YÜKLEME MODALI -->
+    <div id="homeworkModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 id="homeworkModalTitle" class="font-heading text-xl font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="upload-cloud" class="w-5 h-5 text-amber-400"></i>
+                    <span>Yeni Ödev / Ders Materyali Yükle</span>
+                </h3>
+                <button onclick="appState.closeHomeworkModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="homeworkForm" onsubmit="appState.handleSaveHomework(event)" class="space-y-4">
+                <input type="hidden" id="modalHwId">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Ödev Başlığı</label>
+                    <input type="text" id="modalHwTitle" required placeholder="ör: Unit 3 Grammar & Reading Çalışması"
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Açıklama / Talimatlar</label>
+                    <textarea id="modalHwDescription" rows="3" placeholder="ör: Dosyayı indirip alıştırmaları yapın. Son teslim tarihine kadar tamamlayın."
+                              class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Son Teslim Tarihi</label>
+                    <input type="date" id="modalHwDueDate" required
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Cihazdan Dosya Seç (.pdf, .docx, .zip, .png vb.)</label>
+                    <div class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                        <label for="modalHwFileInput" class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-bold cursor-pointer transition-all">
+                            <i data-lucide="paperclip" class="w-4 h-4"></i>
+                            <span>Dosya Seç</span>
+                        </label>
+                        <input type="file" id="modalHwFileInput" onchange="appState.handleHomeworkFileSelect(event)" class="hidden">
+                        <span id="modalHwFileNameDisplay" class="text-xs text-slate-400 truncate flex-1">Henüz dosya seçilmedi</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="appState.closeHomeworkModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-semibold transition-all">
+                        İptal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold shadow-lg shadow-amber-600/30 transition-all">
+                        Yükle ve Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 5: SINAV NOTU & ÖDEV ANALİZİ DÜZENLEME MODALI -->
+    <div id="examModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 id="examModalTitle" class="font-heading text-xl font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i>
+                    <span>Sınav Notu & Ödev Analizi Düzenle</span>
+                </h3>
+                <button onclick="appState.closeExamModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="examForm" onsubmit="appState.handleSaveExam(event)" class="space-y-4">
+                <input type="hidden" id="modalExamStudentId">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Öğrenci Adı</label>
+                    <input type="text" id="modalExamStudentName" readonly
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-slate-300 cursor-not-allowed font-medium">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Dönem Ortası Notu (0 - 100)</label>
+                        <input type="number" id="modalExamMidterm" min="0" max="100" placeholder="ör: 85"
+                               class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Sene Sonu Notu (0 - 100)</label>
+                        <input type="number" id="modalExamFinal" min="0" max="100" placeholder="ör: 90"
+                               class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-purple-500">
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Ödev Analizi & Öğretmen Yorumu</label>
+                        <span id="hwAnalysisCharCounter" class="text-[11px] text-purple-400 font-mono font-semibold">0 / 300 karakter</span>
+                    </div>
+                    <textarea id="modalExamHwAnalysis" rows="3" maxlength="300" 
+                              oninput="appState.updateCharCounter()"
+                              placeholder="Öğrencinin ödev performansı ve ders katılımına ilişkin değerlendirmenizi yazınız (Max 300 karakter)."
+                              class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-purple-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Öğrenciye Özel Dosya Yükle (.pdf, .docx, .zip, .png vb.)</label>
+                    <div class="flex items-center space-x-3 p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                        <label for="modalExamFileInput" class="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold cursor-pointer transition-all">
+                            <i data-lucide="paperclip" class="w-4 h-4"></i>
+                            <span>Dosya Seç</span>
+                        </label>
+                        <input type="file" id="modalExamFileInput" onchange="appState.handleStudentExamFileSelect(event)" class="hidden">
+                        <span id="modalExamFileNameDisplay" class="text-xs text-slate-400 truncate flex-1">Henüz dosya yüklenmedi</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="appState.closeExamModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-semibold transition-all">
+                        İptal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold shadow-lg shadow-purple-600/30 transition-all">
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER FOR NOTIFICATIONS -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
+
+    <!-- App Logic JS -->
+    <script src="app.js"></script>
+</body>
+</html>
