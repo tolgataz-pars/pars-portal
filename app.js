@@ -295,27 +295,45 @@ class AppState {
             let hasCloudData = false;
 
             if (usersRes.data && usersRes.data.length > 0) {
-                this.data.users = usersRes.data;
+                const map = new Map();
+                usersRes.data.forEach(u => map.set(u.id, u));
+                (this.data.users || []).forEach(u => { if (!map.has(u.id)) map.set(u.id, u); });
+                this.data.users = Array.from(map.values());
                 hasCloudData = true;
             }
             if (branchesRes.data && branchesRes.data.length > 0) {
-                this.data.branches = branchesRes.data;
+                const map = new Map();
+                branchesRes.data.forEach(b => map.set(b.id, b));
+                (this.data.branches || []).forEach(b => { if (!map.has(b.id)) map.set(b.id, b); });
+                this.data.branches = Array.from(map.values());
                 hasCloudData = true;
             }
             if (classesRes.data && classesRes.data.length > 0) {
-                this.data.classes = classesRes.data;
+                const map = new Map();
+                classesRes.data.forEach(c => map.set(c.id, c));
+                (this.data.classes || []).forEach(c => { if (!map.has(c.id)) map.set(c.id, c); });
+                this.data.classes = Array.from(map.values());
                 hasCloudData = true;
             }
             if (studentsRes.data && studentsRes.data.length > 0) {
-                this.data.students = studentsRes.data;
+                const map = new Map();
+                studentsRes.data.forEach(s => map.set(s.id, s));
+                (this.data.students || []).forEach(s => { if (!map.has(s.id)) map.set(s.id, s); });
+                this.data.students = Array.from(map.values());
                 hasCloudData = true;
             }
             if (curriculumRes.data && curriculumRes.data.length > 0) {
-                this.data.curriculum = curriculumRes.data;
+                const map = new Map();
+                curriculumRes.data.forEach(c => map.set(c.id, c));
+                (this.data.curriculum || []).forEach(c => { if (!map.has(c.id)) map.set(c.id, c); });
+                this.data.curriculum = Array.from(map.values());
                 hasCloudData = true;
             }
             if (homeworksRes.data && homeworksRes.data.length > 0) {
-                this.data.homeworks = homeworksRes.data;
+                const map = new Map();
+                homeworksRes.data.forEach(h => map.set(h.id, h));
+                (this.data.homeworks || []).forEach(h => { if (!map.has(h.id)) map.set(h.id, h); });
+                this.data.homeworks = Array.from(map.values());
                 hasCloudData = true;
             }
             if (exportRes.data && exportRes.data.length > 0) {
@@ -2271,6 +2289,43 @@ class AppState {
         document.getElementById('teacherMgmtModal').classList.add('hidden');
     }
 
+    compressAvatarImage(file, callback) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_SIZE = 256;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+                callback(compressedBase64);
+            };
+            img.onerror = () => callback(e.target.result);
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
     handleAvatarFileUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -2280,22 +2335,14 @@ class AppState {
             return;
         }
 
-        // Limit file size ~ 3MB
-        if (file.size > 3 * 1024 * 1024) {
-            this.showToast("Dosya boyutu çok büyük (maksimum 3MB)!", "warning");
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            this.currentUploadedAvatarBase64 = e.target.result;
+        this.compressAvatarImage(file, (compressedBase64) => {
+            this.currentUploadedAvatarBase64 = compressedBase64;
             const preview = document.getElementById('teacherAvatarPreview');
             const fileLabel = document.getElementById('teacherAvatarFileName');
             if (preview) preview.src = this.currentUploadedAvatarBase64;
             if (fileLabel) fileLabel.textContent = `✓ Yüklendi: ${file.name}`;
-            this.showToast("Fotoğraf yüklendi!", "success");
-        };
-        reader.readAsDataURL(file);
+            this.showToast("Fotoğraf yüklendi ve optimize edildi!", "success");
+        });
     }
 
     selectAvatarPreset(val) {
@@ -2433,7 +2480,7 @@ class AppState {
         if (window.lucide) window.lucide.createIcons();
     }
 
-    handleSaveTeacher(e) {
+    async handleSaveTeacher(e) {
         e.preventDefault();
         const id = document.getElementById('modalTeacherId').value;
         const name = document.getElementById('modalTeacherName').value.trim();
@@ -2452,27 +2499,27 @@ class AppState {
             return;
         }
 
+        let teacherObj;
+
         if (id) {
-            const u = this.data.users.find(usr => usr.id === id);
-            if (u) {
-                u.name = name;
-                u.avatar = avatar;
-                u.branchPermission = branchPermission;
-                u.username = username;
-                u.password = password;
-                u.title = branchPermission === 'all' ? 'Tüm Şubeler Öğretmeni' :
+            teacherObj = this.data.users.find(usr => usr.id === id);
+            if (teacherObj) {
+                teacherObj.name = name;
+                teacherObj.avatar = avatar;
+                teacherObj.branchPermission = branchPermission;
+                teacherObj.username = username;
+                teacherObj.password = password;
+                teacherObj.title = branchPermission === 'all' ? 'Tüm Şubeler Öğretmeni' :
                           branchPermission === 'gaziemir' ? 'Gaziemir Şubesi Öğretmeni' : 'Alsancak Şubesi Öğretmeni';
                 
                 // If editing currently logged in user
                 if (this.data.currentUser && this.data.currentUser.id === id) {
-                    this.data.currentUser = u;
+                    this.data.currentUser = teacherObj;
                     this.renderAuthHeader();
                 }
-
-                this.showToast("Öğretmen hesabı başarıyla güncellendi.", "success");
             }
         } else {
-            const newTeacher = {
+            teacherObj = {
                 id: `usr-${Date.now()}`,
                 username: username,
                 password: password,
@@ -2483,11 +2530,23 @@ class AppState {
                 title: branchPermission === 'all' ? 'Tüm Şubeler Öğretmeni' :
                        branchPermission === 'gaziemir' ? 'Gaziemir Şubesi Öğretmeni' : 'Alsancak Şubesi Öğretmeni'
             };
-            this.data.users.push(newTeacher);
-            this.showToast("Yeni öğretmen hesabı ve fotoğrafı başarıyla oluşturuldu.", "success");
+            this.data.users.push(teacherObj);
         }
 
         this.saveData();
+
+        // Direct explicit Supabase save for 100% guarantee
+        if (supabaseClient && teacherObj) {
+            const { error } = await supabaseClient.from('users').upsert(teacherObj);
+            if (error) {
+                console.error("Supabase teacher save error:", error);
+                this.showToast(`Bulut kaydetme uyarısı: ${error.message}`, "warning");
+            } else {
+                console.log("⚡ Öğretmen bulut veritabanına başarıyla kaydedildi!");
+            }
+        }
+
+        this.showToast(id ? "Öğretmen hesabı başarıyla güncellendi." : "Yeni öğretmen hesabı ve fotoğrafı başarıyla oluşturuldu.", "success");
         this.resetTeacherForm();
         this.renderTeacherTable();
     }
