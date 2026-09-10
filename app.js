@@ -29,26 +29,6 @@ const INITIAL_DATA = {
             branchPermission: "all", // 'all' | 'gaziemir' | 'alsancak'
             avatar: "assets/avatar_admin.png",
             title: "Sistem Yöneticisi"
-        },
-        {
-            id: "usr-1",
-            username: "ahmetyilmaz",
-            password: "12345",
-            name: "Ahmet Yılmaz",
-            role: "teacher",
-            branchPermission: "gaziemir",
-            avatar: "assets/avatar.png",
-            title: "Gaziemir Şubesi Öğretmeni"
-        },
-        {
-            id: "usr-2",
-            username: "elifdemir",
-            password: "12345",
-            name: "Elif Demir",
-            role: "teacher",
-            branchPermission: "alsancak",
-            avatar: "assets/avatar_female.png",
-            title: "Alsancak Şubesi Öğretmeni"
         }
     ],
     branches: [
@@ -76,7 +56,7 @@ const INITIAL_DATA = {
             branchId: "gaziemir",
             name: "B2-101 Hızlandırılmış İngilizce",
             level: "B2 Upper-Intermediate",
-            teacher: "Ahmet Yılmaz",
+            teacher: "Atanmadı",
             schedule: "Pzt - Çar - Cuma 18:30 - 20:30",
             capacity: 15,
             studentUsername: "b2-101",
@@ -87,7 +67,7 @@ const INITIAL_DATA = {
             branchId: "gaziemir",
             name: "A2-201 Genel İngilizce",
             level: "A2 Elementary",
-            teacher: "Elif Demir",
+            teacher: "Atanmadı",
             schedule: "Salı - Perşembe 14:00 - 17:00",
             capacity: 12,
             studentUsername: "a2-201",
@@ -180,7 +160,7 @@ const INITIAL_DATA = {
             description: "Zaman kıyaslamaları, şirket içi yazışmalar ve konuşma grubu alıştırmaları.",
             startDate: "2026-09-01",
             endDate: "2026-09-15",
-            teacher: "Ahmet Yılmaz"
+            teacher: "Atanmadı"
         },
         {
             id: "curr-2",
@@ -190,7 +170,7 @@ const INITIAL_DATA = {
             description: "Cümle yapıları, bağlaçlar ve akademik paragraf analiz teknikleri.",
             startDate: "2026-09-16",
             endDate: "2026-09-30",
-            teacher: "Elif Demir"
+            teacher: "Atanmadı"
         },
         {
             id: "curr-3",
@@ -200,7 +180,7 @@ const INITIAL_DATA = {
             description: "Günlük selamlaşma, saatler, aile ve meslekler hakkında konuşma.",
             startDate: "2026-09-01",
             endDate: "2026-09-20",
-            teacher: "Elif Demir"
+            teacher: "Atanmadı"
         }
     ],
     homeworks: [
@@ -211,7 +191,7 @@ const INITIAL_DATA = {
             description: "Lütfen ekteki pdf dosyasını indirip 1. ve 2. kısımdaki alıştırmaları tamamlayınız.",
             dueDate: "2026-09-08",
             createdAt: "2026-08-29",
-            teacher: "Ahmet Yılmaz",
+            teacher: "Atanmadı",
             fileName: "B2_Unit1_Grammar_Worksheet.pdf",
             fileSize: "1.2 MB",
             fileData: "data:application/pdf;base64,JVBERi0xLjQKJ..."
@@ -223,7 +203,7 @@ const INITIAL_DATA = {
             description: "A2 seviyesi dinleme parçası çalışma notları ve kelime listesi.",
             dueDate: "2026-09-10",
             createdAt: "2026-08-29",
-            teacher: "Elif Demir",
+            teacher: "Atanmadı",
             fileName: "A2_Listening_Notes.docx",
             fileSize: "450 KB",
             fileData: "data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,UEsDBBQABgA..."
