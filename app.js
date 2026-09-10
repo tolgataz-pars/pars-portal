@@ -292,58 +292,34 @@ class AppState {
                 supabaseClient.from('export_settings').select('*')
             ]);
 
-            let hasCloudData = false;
+            let hasUsers = false;
 
             if (usersRes.data && usersRes.data.length > 0) {
-                const map = new Map();
-                usersRes.data.forEach(u => map.set(u.id, u));
-                (this.data.users || []).forEach(u => { if (!map.has(u.id)) map.set(u.id, u); });
-                this.data.users = Array.from(map.values());
-                hasCloudData = true;
+                this.data.users = usersRes.data;
+                hasUsers = true;
             }
             if (branchesRes.data && branchesRes.data.length > 0) {
-                const map = new Map();
-                branchesRes.data.forEach(b => map.set(b.id, b));
-                (this.data.branches || []).forEach(b => { if (!map.has(b.id)) map.set(b.id, b); });
-                this.data.branches = Array.from(map.values());
-                hasCloudData = true;
+                this.data.branches = branchesRes.data;
             }
             if (classesRes.data && classesRes.data.length > 0) {
-                const map = new Map();
-                classesRes.data.forEach(c => map.set(c.id, c));
-                (this.data.classes || []).forEach(c => { if (!map.has(c.id)) map.set(c.id, c); });
-                this.data.classes = Array.from(map.values());
-                hasCloudData = true;
+                this.data.classes = classesRes.data;
             }
             if (studentsRes.data && studentsRes.data.length > 0) {
-                const map = new Map();
-                studentsRes.data.forEach(s => map.set(s.id, s));
-                (this.data.students || []).forEach(s => { if (!map.has(s.id)) map.set(s.id, s); });
-                this.data.students = Array.from(map.values());
-                hasCloudData = true;
+                this.data.students = studentsRes.data;
             }
             if (curriculumRes.data && curriculumRes.data.length > 0) {
-                const map = new Map();
-                curriculumRes.data.forEach(c => map.set(c.id, c));
-                (this.data.curriculum || []).forEach(c => { if (!map.has(c.id)) map.set(c.id, c); });
-                this.data.curriculum = Array.from(map.values());
-                hasCloudData = true;
+                this.data.curriculum = curriculumRes.data;
             }
             if (homeworksRes.data && homeworksRes.data.length > 0) {
-                const map = new Map();
-                homeworksRes.data.forEach(h => map.set(h.id, h));
-                (this.data.homeworks || []).forEach(h => { if (!map.has(h.id)) map.set(h.id, h); });
-                this.data.homeworks = Array.from(map.values());
-                hasCloudData = true;
+                this.data.homeworks = homeworksRes.data;
             }
             if (exportRes.data && exportRes.data.length > 0) {
                 const setting = exportRes.data[0];
                 this.data.exportSettings = { savePath: setting.savePath || setting.save_path || 'C:\\Pars_Yoklama_Raporlari\\' };
-                hasCloudData = true;
             }
 
-            // If Supabase database is newly created and empty, auto-seed initial data
-            if (!hasCloudData) {
+            // Tohumlama (Seed) YALNIZCA veritabanında users tablosu tamamen boşsa (0 kayıt) çalışır!
+            if (!hasUsers && (!usersRes.data || usersRes.data.length === 0)) {
                 await this.seedInitialDataToSupabase();
             } else {
                 this.saveLocalData();
@@ -361,7 +337,7 @@ class AppState {
         if (!supabaseClient) return;
 
         try {
-            console.log("☁️ Supabase bulut veritabanına başlangıç verileri yükleniyor...");
+            console.log("☁️ Supabase veritabanı tamamen boş olduğu için varsayılan veriler yükleniyor...");
             await Promise.all([
                 supabaseClient.from('users').upsert(INITIAL_DATA.users),
                 supabaseClient.from('branches').upsert(INITIAL_DATA.branches),
@@ -371,7 +347,9 @@ class AppState {
                 supabaseClient.from('homeworks').upsert(INITIAL_DATA.homeworks),
                 supabaseClient.from('export_settings').upsert([{ id: 'main', savePath: 'C:\\Pars_Yoklama_Raporlari\\' }])
             ]);
-            console.log("⚡ Supabase verileri kuruldu ve eşcellendi!");
+            this.data.users = JSON.parse(JSON.stringify(INITIAL_DATA.users));
+            this.saveLocalData();
+            console.log("⚡ Varsayılan veriler yüklendi!");
         } catch (e) {
             console.error("Supabase seed error:", e);
         }
@@ -402,10 +380,7 @@ class AppState {
     }
 
     saveData() {
-        // 1. Instant local persistence
         this.saveLocalData();
-
-        // 2. Async cloud sync to Supabase
         this.syncAllToSupabase();
     }
 
@@ -695,36 +670,102 @@ class AppState {
         if (window.lucide) window.lucide.createIcons();
     }
 
-    handleLogin(e) {
+    async handleLogin(e) {
         if (e) e.preventDefault();
-        const username = document.getElementById('loginUsername').value.trim();
-        const password = document.getElementById('loginPassword').value.trim();
+        const usernameInput = document.getElementById('loginUsername');
+        const passwordInput = document.getElementById('loginPassword');
+        if (!usernameInput || !passwordInput) return;
 
-        this.authenticateUser(username, password);
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+
+        await this.authenticateUser(username, password);
     }
 
-    quickLogin(username, password) {
+    async quickLogin(username, password) {
         this.closeLoginPromptModal();
-        this.authenticateUser(username, password);
+        await this.authenticateUser(username, password);
     }
 
-    authenticateUser(username, password) {
+    async authenticateUser(username, password) {
         const cleanUser = (username || '').trim().toLowerCase();
         const cleanPass = (password || '').trim();
 
-        // 1. Check Admin and Teachers List
+        if (!cleanUser || !cleanPass) {
+            this.showToast("Lütfen kullanıcı adı ve şifrenizi giriniz!", "warning");
+            return false;
+        }
+
+        // CANLI SORGULAMA: Doğrudan Supabase veritabanından kullanıcı doğrulaması yap
+        if (supabaseClient) {
+            try {
+                // 1. Supabase 'users' tablosundan canlı sorgu (Öğretmenler ve Admin)
+                const { data: dbUsers } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('username', cleanUser)
+                    .eq('password', cleanPass);
+
+                if (dbUsers && dbUsers.length > 0) {
+                    const foundUser = dbUsers[0];
+                    this.data.currentUser = foundUser;
+                    
+                    // Supabase'den gelen kullanıcıyı yerel hafızaya da aktar
+                    const idx = this.data.users.findIndex(u => u.id === foundUser.id);
+                    if (idx >= 0) this.data.users[idx] = foundUser;
+                    else this.data.users.push(foundUser);
+
+                    this.saveLocalData();
+                    this.renderAuthHeader();
+                    this.renderLandingScreen();
+                    this.showToast(`Hoş geldiniz, ${foundUser.name}!`, "success");
+                    return true;
+                }
+
+                // 2. Supabase 'classes' tablosundan canlı sorgu (Öğrenci Sınıf Girişleri)
+                const { data: dbClasses } = await supabaseClient
+                    .from('classes')
+                    .select('*')
+                    .eq('studentUsername', cleanUser)
+                    .eq('studentPassword', cleanPass);
+
+                if (dbClasses && dbClasses.length > 0) {
+                    const foundClass = dbClasses[0];
+                    const studentUser = {
+                        id: `std-class-${foundClass.id}`,
+                        username: foundClass.studentUsername,
+                        name: `${foundClass.name}`,
+                        role: "student",
+                        assignedClassId: foundClass.id,
+                        assignedBranchId: foundClass.branchId,
+                        avatar: "assets/logo.png",
+                        title: `${foundClass.name} Öğrencisi (Salt Okunur)`
+                    };
+
+                    this.data.currentUser = studentUser;
+                    this.saveLocalData();
+                    this.renderAuthHeader();
+                    this.showToast(`Hoş geldiniz! ${foundClass.name} Öğrenci Girişi Yapıldı. (Salt Okunur Mod)`, "info");
+                    this.navigateTo('classDetail', { classId: foundClass.id });
+                    return true;
+                }
+            } catch (err) {
+                console.warn("Supabase canlı giriş sorgusu hatası, yerel hafızaya geçiliyor:", err);
+            }
+        }
+
+        // ÇEVRİMDIŞI / FALLBACK SORGUSU: İnternet veya Supabase erişilemezse yerel bellekten kontrol et
         const found = this.data.users.find(u => u.username.trim().toLowerCase() === cleanUser && u.password.trim() === cleanPass);
 
         if (found) {
             this.data.currentUser = found;
-            this.saveData();
+            this.saveLocalData();
             this.renderAuthHeader();
             this.renderLandingScreen();
             this.showToast(`Hoş geldiniz, ${found.name}!`, "success");
-            return;
+            return true;
         }
 
-        // 2. Check Class Student Credentials
         const foundClass = this.data.classes.find(c => 
             c.studentUsername && c.studentUsername.trim().toLowerCase() === cleanUser && 
             c.studentPassword && c.studentPassword.trim() === cleanPass
@@ -743,14 +784,15 @@ class AppState {
             };
 
             this.data.currentUser = studentUser;
-            this.saveData();
+            this.saveLocalData();
             this.renderAuthHeader();
             this.showToast(`Hoş geldiniz! ${foundClass.name} Öğrenci Girişi Yapıldı. (Salt Okunur Mod)`, "info");
             this.navigateTo('classDetail', { classId: foundClass.id });
-            return;
+            return true;
         }
 
         this.showToast("Hatalı kullanıcı adı veya şifre!", "error");
+        return false;
     }
 
     handleLogout() {
