@@ -2372,19 +2372,44 @@ class AppState {
         }
     }
 
+    updateSkillPillStyle(inputEl) {
+        const label = inputEl.closest('.teacher-skill-pill');
+        if (!label) return;
+        if (inputEl.checked) {
+            label.classList.remove('bg-slate-950', 'text-slate-400', 'border-slate-800', 'hover:border-slate-700', 'font-semibold');
+            label.classList.add('bg-teal-500/20', 'text-teal-300', 'border-teal-500/50', 'shadow-sm', 'font-bold');
+        } else {
+            label.classList.remove('bg-teal-500/20', 'text-teal-300', 'border-teal-500/50', 'shadow-sm', 'font-bold');
+            label.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800', 'hover:border-slate-700', 'font-semibold');
+        }
+    }
+
+    getSelectedTeacherSkills() {
+        const checkboxes = document.querySelectorAll('.teacher-skill-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+
+    setSelectedTeacherSkills(skillsArr = []) {
+        const skills = Array.isArray(skillsArr) ? skillsArr : (typeof skillsArr === 'string' && skillsArr ? skillsArr.split(',').map(s => s.trim()) : []);
+        const checkboxes = document.querySelectorAll('.teacher-skill-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = skills.includes(cb.value);
+            this.updateSkillPillStyle(cb);
+        });
+    }
+
     resetTeacherForm() {
         this.currentUploadedAvatarBase64 = null;
         document.getElementById('modalTeacherId').value = '';
         document.getElementById('modalTeacherName').value = '';
-        document.getElementById('modalTeacherAvatarPreset').value = 'assets/avatar.png';
-        document.getElementById('modalTeacherAvatarCustom').value = '';
-        document.getElementById('modalTeacherAvatarCustom').classList.add('hidden');
         document.getElementById('teacherAvatarPreview').src = 'assets/avatar.png';
         
         const fileInput = document.getElementById('modalTeacherAvatarFile');
         if (fileInput) fileInput.value = '';
         const fileLabel = document.getElementById('teacherAvatarFileName');
-        if (fileLabel) fileLabel.textContent = "veya hazır preset / URL seçin";
+        if (fileLabel) fileLabel.textContent = "Opsiyonel (varsayılan profil resmi kalır)";
+
+        this.setSelectedTeacherSkills([]);
 
         document.getElementById('modalTeacherBranch').value = 'all';
         document.getElementById('modalTeacherUsername').value = '';
@@ -2406,6 +2431,11 @@ class AppState {
             const branchClass = u.branchPermission === 'all' ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' :
                               u.branchPermission === 'gaziemir' ? 'bg-teal-500/10 text-teal-300 border-teal-500/20' : 'bg-sky-500/10 text-sky-300 border-sky-500/20';
 
+            const skillsArr = Array.isArray(u.skills) ? u.skills : (typeof u.skills === 'string' && u.skills ? u.skills.split(',') : []);
+            const skillsBadges = skillsArr.length > 0
+                ? `<div class="flex flex-wrap gap-1 mt-1.5">${skillsArr.map(s => `<span class="px-1.5 py-0.5 rounded-md bg-teal-500/10 text-teal-300 border border-teal-500/20 text-[10px] font-semibold">${s.trim()}</span>`).join('')}</div>`
+                : '';
+
             return `
                 <tr class="hover:bg-slate-900/60 transition-colors">
                     <td class="py-3 px-4 font-semibold text-white">
@@ -2417,6 +2447,7 @@ class AppState {
                                     ${isAdmin ? '<span class="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">ADMIN</span>' : ''}
                                 </div>
                                 <span class="text-[10px] text-slate-400 block font-medium">${u.title || 'Öğretmen'}</span>
+                                ${skillsBadges}
                             </div>
                         </div>
                     </td>
@@ -2463,21 +2494,15 @@ class AppState {
         document.getElementById('modalTeacherUsername').value = u.username;
         document.getElementById('modalTeacherPassword').value = u.password;
 
+        document.getElementById('teacherAvatarPreview').src = u.avatar || 'assets/avatar.png';
         if (u.avatar && u.avatar.startsWith('data:image/')) {
             this.currentUploadedAvatarBase64 = u.avatar;
-            document.getElementById('teacherAvatarPreview').src = u.avatar;
-            document.getElementById('modalTeacherAvatarPreset').value = 'assets/avatar.png';
             document.getElementById('teacherAvatarFileName').textContent = "✓ Kayıtlı Özel Fotoğraf";
-        } else if (['assets/avatar.png', 'assets/avatar_male2.png', 'assets/avatar_female.png', 'assets/avatar_admin.png'].includes(u.avatar)) {
-            document.getElementById('modalTeacherAvatarPreset').value = u.avatar;
-            document.getElementById('modalTeacherAvatarCustom').classList.add('hidden');
-            document.getElementById('teacherAvatarPreview').src = u.avatar;
         } else {
-            document.getElementById('modalTeacherAvatarPreset').value = 'custom';
-            document.getElementById('modalTeacherAvatarCustom').classList.remove('hidden');
-            document.getElementById('modalTeacherAvatarCustom').value = u.avatar || '';
-            document.getElementById('teacherAvatarPreview').src = u.avatar || 'assets/avatar.png';
+            document.getElementById('teacherAvatarFileName').textContent = "Opsiyonel (varsayılan profil resmi kalır)";
         }
+
+        this.setSelectedTeacherSkills(u.skills || []);
 
         document.getElementById('teacherFormTitle').innerHTML = `<i data-lucide="edit-2" class="w-4 h-4 text-teal-400"></i><span>Öğretmen Bilgilerini Düzenle</span>`;
         if (window.lucide) window.lucide.createIcons();
@@ -2487,13 +2512,13 @@ class AppState {
         e.preventDefault();
         const id = document.getElementById('modalTeacherId').value;
         const name = document.getElementById('modalTeacherName').value.trim();
-        const preset = document.getElementById('modalTeacherAvatarPreset').value;
-        const customUrl = document.getElementById('modalTeacherAvatarCustom').value.trim();
         
-        const avatar = this.currentUploadedAvatarBase64 || (preset === 'custom' ? (customUrl || 'assets/avatar.png') : preset);
+        const existingUser = id ? this.data.users.find(usr => usr.id === id) : null;
+        const avatar = this.currentUploadedAvatarBase64 || (existingUser ? existingUser.avatar : 'assets/avatar.png');
         const branchPermission = document.getElementById('modalTeacherBranch').value;
         const username = document.getElementById('modalTeacherUsername').value.trim().toLowerCase();
         const password = document.getElementById('modalTeacherPassword').value.trim();
+        const skills = this.getSelectedTeacherSkills();
 
         // Check unique username
         const duplicate = this.data.users.find(u => u.username.toLowerCase() === username && u.id !== id);
@@ -2512,6 +2537,7 @@ class AppState {
                 teacherObj.branchPermission = branchPermission;
                 teacherObj.username = username;
                 teacherObj.password = password;
+                teacherObj.skills = skills;
                 teacherObj.title = branchPermission === 'all' ? 'Tüm Şubeler Öğretmeni' :
                           branchPermission === 'gaziemir' ? 'Gaziemir Şubesi Öğretmeni' : 'Alsancak Şubesi Öğretmeni';
                 
@@ -2530,6 +2556,7 @@ class AppState {
                 role: "teacher",
                 branchPermission: branchPermission,
                 avatar: avatar,
+                skills: skills,
                 title: branchPermission === 'all' ? 'Tüm Şubeler Öğretmeni' :
                        branchPermission === 'gaziemir' ? 'Gaziemir Şubesi Öğretmeni' : 'Alsancak Şubesi Öğretmeni'
             };
@@ -2549,7 +2576,7 @@ class AppState {
             }
         }
 
-        this.showToast(id ? "Öğretmen hesabı başarıyla güncellendi." : "Yeni öğretmen hesabı ve fotoğrafı başarıyla oluşturuldu.", "success");
+        this.showToast(id ? "Öğretmen hesabı başarıyla güncellendi." : "Yeni öğretmen hesabı başarıyla oluşturuldu.", "success");
         this.resetTeacherForm();
         this.renderTeacherTable();
     }
