@@ -1962,7 +1962,7 @@ class AppState {
 
                     <!-- 4. Tarih (Datepicker - Disabled for Students) -->
                     <td class="py-4 px-4 text-xs text-slate-300">
-                        <input type="date" ${isStudent ? 'disabled' : ''} value="${student.date || this.selectedDate}" 
+                        <input type="date" style="color-scheme: dark;" ${isStudent ? 'disabled' : ''} value="${student.date || this.selectedDate}" 
                                onchange="appState.updateStudentDate('${student.id}', this.value)"
                                class="bg-slate-950 border border-slate-800 px-2 py-1 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-teal-500 ${isStudent ? 'cursor-not-allowed text-slate-400' : ''}">
                     </td>
