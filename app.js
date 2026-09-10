@@ -1911,14 +1911,12 @@ class AppState {
         const classStudents = this.data.students.filter(s => s.classId === currentClass.id);
 
         this.studentSearchQuery = (document.getElementById('studentSearchInput')?.value || '').toLowerCase().trim();
-        this.studentSkillFilter = document.getElementById('skillFilterSelect')?.value || 'ALL';
         this.studentAttendanceFilter = document.getElementById('attendanceFilterSelect')?.value || 'ALL';
 
         const filtered = classStudents.filter(s => {
             const matchName = s.name.toLowerCase().includes(this.studentSearchQuery);
-            const matchSkill = this.studentSkillFilter === 'ALL' || s.skill === this.studentSkillFilter;
             const matchAttendance = this.studentAttendanceFilter === 'ALL' || s.attendance === this.studentAttendanceFilter;
-            return matchName && matchSkill && matchAttendance;
+            return matchName && matchAttendance;
         });
 
         const presentCount = classStudents.filter(s => s.attendance === 'Geldi').length;
@@ -1940,7 +1938,7 @@ class AppState {
         if (students.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="py-12 text-center text-slate-500">
+                    <td colspan="6" class="py-12 text-center text-slate-500">
                         <i data-lucide="user-x" class="w-10 h-10 mx-auto mb-2 text-slate-600"></i>
                         <p class="font-medium text-white">Öğrenci Kaydı Bulunamadı</p>
                         <p class="text-xs text-slate-400 mt-1">Bu sınıfta kayıtlı öğrenci yok veya filtrelerle eşleşmedi.</p>
@@ -1955,7 +1953,6 @@ class AppState {
         const isStudent = this.isStudent();
 
         tbody.innerHTML = students.map(student => {
-            const skillClass = `skill-pill-${student.skill.toLowerCase()}`;
             const isPresent = student.attendance === 'Geldi';
 
             return `
@@ -1983,25 +1980,14 @@ class AppState {
                         ${student.age} Yaş
                     </td>
 
-                    <!-- 4. Beceri (Skill Dropdown - Disabled for Students) -->
-                    <td class="py-4 px-4">
-                        <select ${isStudent ? 'disabled' : ''} onchange="appState.updateStudentSkill('${student.id}', this.value)"
-                                class="px-2.5 py-1 rounded-lg text-xs font-semibold focus:outline-none ${skillClass} ${isStudent ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'}">
-                            <option value="Reading" ${student.skill === 'Reading' ? 'selected' : ''}>📖 Reading</option>
-                            <option value="Listening" ${student.skill === 'Listening' ? 'selected' : ''}>🎧 Listening</option>
-                            <option value="Speaking" ${student.skill === 'Speaking' ? 'selected' : ''}>🗣️ Speaking</option>
-                            <option value="Writing" ${student.skill === 'Writing' ? 'selected' : ''}>✍️ Writing</option>
-                        </select>
-                    </td>
-
-                    <!-- 5. Tarih (Datepicker - Disabled for Students) -->
+                    <!-- 4. Tarih (Datepicker - Disabled for Students) -->
                     <td class="py-4 px-4 text-xs text-slate-300">
                         <input type="date" ${isStudent ? 'disabled' : ''} value="${student.date || this.selectedDate}" 
                                onchange="appState.updateStudentDate('${student.id}', this.value)"
                                class="bg-slate-950 border border-slate-800 px-2 py-1 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-teal-500 ${isStudent ? 'cursor-not-allowed text-slate-400' : ''}">
                     </td>
 
-                    <!-- 6. Yoklama (Disabled for Students) -->
+                    <!-- 5. Yoklama (Disabled for Students) -->
                     <td class="py-4 px-6 text-center">
                         <button ${isStudent ? 'disabled' : ''} onclick="appState.toggleAttendance('${student.id}')"
                                 class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm ${isPresent ? 'badge-geldi' : 'badge-gelmedi'} ${isStudent ? 'cursor-not-allowed pointer-events-none opacity-90' : ''}"
@@ -2012,7 +1998,7 @@ class AppState {
                         </button>
                     </td>
 
-                    <!-- 7. İşlemler -->
+                    <!-- 6. İşlemler -->
                     <td class="py-4 px-6 text-right">
                         ${isAdmin ? `
                             <div class="flex items-center justify-end space-x-1">
@@ -2121,7 +2107,6 @@ class AppState {
         document.getElementById('modalStudentName').value = '';
         document.getElementById('modalStudentClassText').value = currentClass.name;
         document.getElementById('modalStudentAge').value = '22';
-        document.getElementById('modalStudentSkill').value = 'Reading';
         document.getElementById('modalStudentDate').value = this.selectedDate;
         document.getElementById('modalStudentAttendance').value = 'Geldi';
 
@@ -2144,7 +2129,6 @@ class AppState {
         document.getElementById('modalStudentName').value = student.name;
         document.getElementById('modalStudentClassText').value = currentClass ? currentClass.name : '';
         document.getElementById('modalStudentAge').value = student.age;
-        document.getElementById('modalStudentSkill').value = student.skill;
         document.getElementById('modalStudentDate').value = student.date || this.selectedDate;
         document.getElementById('modalStudentAttendance').value = student.attendance;
 
@@ -2165,7 +2149,6 @@ class AppState {
         const id = document.getElementById('modalStudentId').value;
         const name = document.getElementById('modalStudentName').value.trim();
         const age = parseInt(document.getElementById('modalStudentAge').value, 10);
-        const skill = document.getElementById('modalStudentSkill').value;
         const date = document.getElementById('modalStudentDate').value;
         const attendance = document.getElementById('modalStudentAttendance').value;
 
@@ -2174,7 +2157,6 @@ class AppState {
             if (student) {
                 student.name = name;
                 student.age = age;
-                student.skill = skill;
                 student.date = date;
                 student.attendance = attendance;
                 this.showToast("Öğrenci bilgileri güncellendi.", "success");
@@ -2185,7 +2167,6 @@ class AppState {
                 classId: this.selectedClassId,
                 name: name,
                 age: age,
-                skill: skill,
                 date: date,
                 attendance: attendance
             };
@@ -2647,7 +2628,7 @@ class AppState {
                 ["Seviye:", currentClass.level, "", "Ders Saatleri:", currentClass.schedule || "Belirtilmedi"],
                 ["Toplam Öğrenci:", classStudents.length, "Katılan (Geldi):", presentCount, "Katılmayan (Gelmedi):", absentCount, "Katılım Oranı:", `%${rate}`],
                 [""],
-                ["Sıra No", "Öğrenci Adı Soyadı", "Sınıfı", "Yaşı", "Beceri Odak Alanı (Skill)", "Yoklama Tarihi", "Yoklama Durumu"]
+                ["Sıra No", "Öğrenci Adı Soyadı", "Sınıfı", "Yaşı", "Yoklama Tarihi", "Yoklama Durumu"]
             ];
 
             classStudents.forEach((s, idx) => {
@@ -2656,7 +2637,6 @@ class AppState {
                     s.name,
                     currentClass.name,
                     s.age,
-                    s.skill,
                     s.date || this.selectedDate,
                     s.attendance
                 ]);
@@ -2669,7 +2649,6 @@ class AppState {
                 { wch: 25 },
                 { wch: 30 },
                 { wch: 10 },
-                { wch: 20 },
                 { wch: 15 },
                 { wch: 18 }
             ];
@@ -2697,10 +2676,10 @@ class AppState {
         }
 
         let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-        csvContent += "Ad Soyad;Sınıfı;Yaşı;Beceri (Skill);Tarih;Yoklama Durumu\n";
+        csvContent += "Ad Soyad;Sınıfı;Yaşı;Tarih;Yoklama Durumu\n";
 
         classStudents.forEach(s => {
-            csvContent += `"${s.name}";"${currentClass.name}";${s.age};"${s.skill}";"${s.date || this.selectedDate}";"${s.attendance}"\n`;
+            csvContent += `"${s.name}";"${currentClass.name}";${s.age};"${s.date || this.selectedDate}";"${s.attendance}"\n`;
         });
 
         const encodedUri = encodeURI(csvContent);
