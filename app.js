@@ -240,9 +240,8 @@ class AppState {
         this.renderAuthHeader();
         this.renderView();
         
-        // Supabase Cloud Sync & Realtime Subscription
+        // Supabase Cloud Initial Sync (Only once on app startup, no heavy polling loops)
         await this.syncDataFromSupabase();
-        this.setupRealtimeSubscription();
 
         setTimeout(() => {
             if (window.lucide) window.lucide.createIcons();
@@ -335,22 +334,6 @@ class AppState {
         }
     }
 
-    setupRealtimeSubscription() {
-        if (!supabaseClient) return;
-
-        try {
-            supabaseClient
-                .channel('public_db_changes')
-                .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-                    console.log("⚡ Supabase Canlı Veri Değişikliği:", payload);
-                    this.syncDataFromSupabase();
-                })
-                .subscribe();
-        } catch (e) {
-            console.warn("Supabase Realtime subscription error:", e);
-        }
-    }
-
     saveLocalData() {
         try {
             localStorage.setItem('PARS_PORTAL_DATA_V3', JSON.stringify(this.data));
@@ -361,26 +344,6 @@ class AppState {
 
     saveData() {
         this.saveLocalData();
-        this.syncAllToSupabase();
-    }
-
-    async syncAllToSupabase() {
-        if (!supabaseClient) return;
-
-        try {
-            const promises = [];
-            if (this.data.users?.length) promises.push(supabaseClient.from('users').upsert(this.data.users));
-            if (this.data.branches?.length) promises.push(supabaseClient.from('branches').upsert(this.data.branches));
-            if (this.data.classes?.length) promises.push(supabaseClient.from('classes').upsert(this.data.classes));
-            if (this.data.students?.length) promises.push(supabaseClient.from('students').upsert(this.data.students));
-            if (this.data.curriculum?.length) promises.push(supabaseClient.from('curriculum').upsert(this.data.curriculum));
-            if (this.data.homeworks?.length) promises.push(supabaseClient.from('homeworks').upsert(this.data.homeworks));
-            if (this.data.exportSettings) promises.push(supabaseClient.from('export_settings').upsert([{ id: 'main', savePath: this.data.exportSettings.savePath || 'C:\\Pars_Yoklama_Raporlari\\' }]));
-
-            await Promise.all(promises);
-        } catch (e) {
-            console.error("Supabase sync save error:", e);
-        }
     }
 
     // Local Storage Persistence
@@ -1087,19 +1050,21 @@ class AppState {
         const studentUsername = document.getElementById('modalClassStudentUsername').value.trim().toLowerCase();
         const studentPassword = document.getElementById('modalClassStudentPassword').value.trim();
 
+        let targetClass;
+
         if (id) {
-            const cls = this.data.classes.find(c => c.id === id);
-            if (cls) {
-                cls.name = name;
-                cls.level = level;
-                cls.teacher = teacher;
-                cls.schedule = schedule;
-                cls.studentUsername = studentUsername;
-                cls.studentPassword = studentPassword;
+            targetClass = this.data.classes.find(c => c.id === id);
+            if (targetClass) {
+                targetClass.name = name;
+                targetClass.level = level;
+                targetClass.teacher = teacher;
+                targetClass.schedule = schedule;
+                targetClass.studentUsername = studentUsername;
+                targetClass.studentPassword = studentPassword;
                 this.showToast("Sınıf bilgileri güncellendi.", "success");
             }
         } else {
-            const newClass = {
+            targetClass = {
                 id: `cls-${Date.now()}`,
                 branchId: this.selectedBranchId,
                 name: name,
@@ -1110,11 +1075,12 @@ class AppState {
                 studentUsername: studentUsername,
                 studentPassword: studentPassword
             };
-            this.data.classes.push(newClass);
+            this.data.classes.push(targetClass);
             this.showToast("Yeni sınıf başarıyla oluşturuldu.", "success");
         }
 
         this.saveData();
+        if (supabaseClient && targetClass) supabaseClient.from('classes').upsert(targetClass);
         this.closeClassModal();
         this.renderBranchScreen();
     }
@@ -1442,6 +1408,7 @@ class AppState {
         }
 
         this.saveData();
+        if (supabaseClient) supabaseClient.from('students').upsert(student);
         this.showToast(`${student.name} sınav notları ve ödev analizi güncellendi.`, "success");
         this.closeExamModal();
         this.renderExamGradesList();
@@ -1606,19 +1573,21 @@ class AppState {
         const endDate = document.getElementById('modalCurrEndDate').value;
         const teacher = document.getElementById('modalCurrTeacher').value;
 
+        let targetItem;
+
         if (id) {
-            const item = (this.data.curriculum || []).find(c => c.id === id);
-            if (item) {
-                item.level = level;
-                item.topic = topic;
-                item.description = description;
-                item.startDate = startDate;
-                item.endDate = endDate;
-                item.teacher = teacher;
+            targetItem = (this.data.curriculum || []).find(c => c.id === id);
+            if (targetItem) {
+                targetItem.level = level;
+                targetItem.topic = topic;
+                targetItem.description = description;
+                targetItem.startDate = startDate;
+                targetItem.endDate = endDate;
+                targetItem.teacher = teacher;
                 this.showToast("Müfredat konusu güncellendi.", "success");
             }
         } else {
-            const newItem = {
+            targetItem = {
                 id: `curr-${Date.now()}`,
                 classId: this.selectedClassId,
                 level: level,
@@ -1629,11 +1598,12 @@ class AppState {
                 teacher: teacher
             };
             if (!this.data.curriculum) this.data.curriculum = [];
-            this.data.curriculum.push(newItem);
+            this.data.curriculum.push(targetItem);
             this.showToast("Yeni müfredat konusu eklendi.", "success");
         }
 
         this.saveData();
+        if (supabaseClient && targetItem) supabaseClient.from('curriculum').upsert(targetItem);
         this.closeCurriculumModal();
         this.renderCurriculumList();
     }
@@ -1835,6 +1805,7 @@ class AppState {
         this.data.homeworks.push(newItem);
 
         this.saveData();
+        if (supabaseClient) supabaseClient.from('homeworks').upsert(newItem);
         this.showToast(`'${newItem.title}' ödevi başarıyla yüklendi.`, "success");
         this.closeHomeworkModal();
         this.renderHomeworkList();
@@ -2019,6 +1990,7 @@ class AppState {
 
         student.attendance = student.attendance === 'Geldi' ? 'Gelmedi' : 'Geldi';
         this.saveData();
+        if (supabaseClient) supabaseClient.from('students').upsert(student);
         this.filterStudents();
 
         const toastType = student.attendance === 'Geldi' ? 'success' : 'warning';
@@ -2035,6 +2007,7 @@ class AppState {
 
         student.skill = newSkill;
         this.saveData();
+        if (supabaseClient) supabaseClient.from('students').upsert(student);
         this.filterStudents();
         this.showToast(`${student.name} becerisi '${newSkill}' yapıldı.`, "info");
     }
@@ -2049,6 +2022,7 @@ class AppState {
 
         student.date = newDate;
         this.saveData();
+        if (supabaseClient) supabaseClient.from('students').upsert(student);
         this.filterStudents();
         this.showToast(`${student.name} yoklama tarihi güncellendi.`, "info");
     }
@@ -2062,14 +2036,17 @@ class AppState {
         if (!currentClass) return;
 
         let count = 0;
+        const updatedStudents = [];
         this.data.students.forEach(s => {
             if (s.classId === currentClass.id) {
                 s.attendance = status;
+                updatedStudents.push(s);
                 count++;
             }
         });
 
         this.saveData();
+        if (supabaseClient && updatedStudents.length > 0) supabaseClient.from('students').upsert(updatedStudents);
         this.filterStudents();
         this.showToast(`Sınıftaki ${count} öğrenci '${status}' işaretlendi.`, status === 'Geldi' ? 'success' : 'warning');
     }
@@ -2132,17 +2109,19 @@ class AppState {
         const date = document.getElementById('modalStudentDate').value;
         const attendance = document.getElementById('modalStudentAttendance').value;
 
+        let targetStudent;
+
         if (id) {
-            const student = this.data.students.find(s => s.id === id);
-            if (student) {
-                student.name = name;
-                student.age = age;
-                student.date = date;
-                student.attendance = attendance;
+            targetStudent = this.data.students.find(s => s.id === id);
+            if (targetStudent) {
+                targetStudent.name = name;
+                targetStudent.age = age;
+                targetStudent.date = date;
+                targetStudent.attendance = attendance;
                 this.showToast("Öğrenci bilgileri güncellendi.", "success");
             }
         } else {
-            const newStudent = {
+            targetStudent = {
                 id: `std-${Date.now()}`,
                 classId: this.selectedClassId,
                 name: name,
@@ -2150,11 +2129,12 @@ class AppState {
                 date: date,
                 attendance: attendance
             };
-            this.data.students.push(newStudent);
+            this.data.students.push(targetStudent);
             this.showToast("Yeni öğrenci sınıfa eklendi.", "success");
         }
 
         this.saveData();
+        if (supabaseClient && targetStudent) supabaseClient.from('students').upsert(targetStudent);
         this.closeStudentModal();
         this.filterStudents();
     }
@@ -2263,6 +2243,7 @@ class AppState {
             cls.studentUsername = u;
             cls.studentPassword = p;
             this.saveData();
+            if (supabaseClient) supabaseClient.from('classes').upsert(cls);
             this.showToast(`'${cls.name}' öğrenci hesabı güncellendi: ${u} / ${p}`, "success");
             this.renderClassStudentAccountsTable();
         }
@@ -2285,6 +2266,7 @@ class AppState {
         if (!this.data.exportSettings) this.data.exportSettings = {};
         this.data.exportSettings.savePath = path;
         this.saveData();
+        if (supabaseClient) supabaseClient.from('export_settings').upsert([{ id: 'main', savePath: path }]);
         this.showToast(`📁 Excel kayıt yolu başarıyla güncellendi: ${path}`, "success");
     }
 
@@ -2298,7 +2280,7 @@ class AppState {
             const img = new Image();
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_SIZE = 256;
+                const MAX_SIZE = 150;
                 let width = img.width;
                 let height = img.height;
 
@@ -2320,7 +2302,7 @@ class AppState {
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
 
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.60);
                 callback(compressedBase64);
             };
             img.onerror = () => callback(e.target.result);
