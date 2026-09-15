@@ -196,18 +196,18 @@ class AppState {
             ]);
 
             if (usersRes.data && usersRes.data.length > 0) {
-                this.data.users = this.deduplicateUsers(usersRes.data);
+                this.data.users = Array.from(new Map(usersRes.data.map(u => [u.id, u])).values());
             }
             if (branchesRes.data && branchesRes.data.length > 0) {
                 this.data.branches = branchesRes.data;
             }
             if (classesRes.data && classesRes.data.length > 0) {
-                const uniqueClasses = this.deduplicateClasses(classesRes.data);
+                const uniqueClasses = Array.from(new Map(classesRes.data.map(c => [c.id, c])).values());
                 this.data.classes = uniqueClasses;
                 try { localStorage.setItem('classes', JSON.stringify(uniqueClasses)); } catch(e){}
             }
             if (studentsRes.data && studentsRes.data.length > 0) {
-                const uniqueStudents = this.deduplicateStudents(studentsRes.data);
+                const uniqueStudents = Array.from(new Map(studentsRes.data.map(s => [s.id, s])).values());
                 this.data.students = uniqueStudents;
                 try { localStorage.setItem('students', JSON.stringify(uniqueStudents)); } catch(e){}
             }
@@ -238,30 +238,7 @@ class AppState {
     }
 
     async seedInitialDataToSupabase() {
-        if (!supabaseClient) return;
-
-        try {
-            console.log("☁️ Supabase veritabanına yeni 25 sınıf ve öğrenci verileri yükleniyor...");
-            await Promise.all([
-                supabaseClient.from('users').upsert(INITIAL_DATA.users),
-                supabaseClient.from('branches').upsert(INITIAL_DATA.branches),
-                supabaseClient.from('classes').upsert(INITIAL_DATA.classes),
-                supabaseClient.from('students').upsert(INITIAL_DATA.students),
-                supabaseClient.from('curriculum').upsert(INITIAL_DATA.curriculum),
-                supabaseClient.from('homeworks').upsert(INITIAL_DATA.homeworks),
-                supabaseClient.from('export_settings').upsert([{ id: 'main', savePath: 'C:\\Pars_Yoklama_Raporlari\\' }])
-            ]);
-            this.data.classes = this.deduplicateClasses(JSON.parse(JSON.stringify(INITIAL_DATA.classes)));
-            this.data.students = this.deduplicateStudents(JSON.parse(JSON.stringify(INITIAL_DATA.students)));
-            this.saveLocalData();
-            this.renderAuthHeader();
-            if (this.currentView === 'landing') this.renderLandingScreen();
-            else if (this.currentView === 'branch') this.renderBranchScreen();
-            else if (this.currentView === 'classDetail') this.renderClassDetailScreen();
-            console.log("⚡ 25 Sınıf ve tüm öğrenci verileri yüklendi!");
-        } catch (e) {
-            console.error("Supabase seed error:", e);
-        }
+        return;
     }
 
     saveLocalData() {
@@ -698,16 +675,19 @@ class AppState {
     // EKRAN 1: LANDING SCREEN RENDER
     // -------------------------------------------------------------
     renderLandingScreen() {
-        const totalClasses = this.data.classes.length;
-        const totalStudents = this.data.students.length;
+        const uniqueClasses = Array.from(new Map(this.data.classes.map(c => [c.id, c])).values());
+        const uniqueStudents = Array.from(new Map(this.data.students.map(s => [s.id, s])).values());
+
+        const totalClasses = uniqueClasses.length;
+        const totalStudents = uniqueStudents.length;
         document.getElementById('landingTotalClasses').textContent = `${totalClasses} Eğitim Sınıfı`;
         document.getElementById('landingTotalStudents').textContent = `${totalStudents} Kayıtlı Öğrenci`;
 
         const container = document.getElementById('branchCardsContainer');
         container.innerHTML = this.data.branches.map(branch => {
-            const branchClasses = this.data.classes.filter(c => c.branchId === branch.id);
+            const branchClasses = uniqueClasses.filter(c => c.branchId === branch.id);
             const branchClassIds = branchClasses.map(c => c.id);
-            const branchStudentCount = this.data.students.filter(s => branchClassIds.includes(s.classId)).length;
+            const branchStudentCount = uniqueStudents.filter(s => branchClassIds.includes(s.classId)).length;
             const hasPermission = this.hasBranchPermission(branch.id);
             const isLoggedIn = !!this.data.currentUser;
 
@@ -803,9 +783,12 @@ class AppState {
             }
         }
 
-        const branchClasses = this.data.classes.filter(c => c.branchId === branch.id);
+        const uniqueClasses = Array.from(new Map(this.data.classes.map(c => [c.id, c])).values());
+        const uniqueStudents = Array.from(new Map(this.data.students.map(s => [s.id, s])).values());
+
+        const branchClasses = uniqueClasses.filter(c => c.branchId === branch.id);
         const branchClassIds = branchClasses.map(c => c.id);
-        const branchStudents = this.data.students.filter(s => branchClassIds.includes(s.classId));
+        const branchStudents = uniqueStudents.filter(s => branchClassIds.includes(s.classId));
         const presentCount = branchStudents.filter(s => s.attendance === 'Geldi').length;
         const attendanceRate = branchStudents.length > 0 ? Math.round((presentCount / branchStudents.length) * 100) : 0;
 
