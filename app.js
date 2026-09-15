@@ -707,23 +707,15 @@ class AppState {
         );
 
         // Öğrencileri isim ve sınıf adı/id bazında tekilleştir:
-        const uniqueStudents = Array.from(
-          new Map(
-            (this.data.students || []).map(s => [
-              `${(s.name || '').toLowerCase().trim()}_${(s.classId || s.className || '').toLowerCase().trim()}`,
-              s
-            ])
-          ).values()
-        );
+        const uniqueStudentCount = new Set((this.data.students || []).map(s => s.id).filter(Boolean)).size || (this.data.students || []).length;
 
         const totalClasses = uniqueClasses.length;
-        const totalStudents = uniqueStudents.length;
 
         const landingTotalClassesEl = document.getElementById('landingTotalClasses');
         if (landingTotalClassesEl) landingTotalClassesEl.textContent = `${totalClasses} Eğitim Sınıfı`;
 
         const landingTotalStudentsEl = document.getElementById('landingTotalStudents');
-        if (landingTotalStudentsEl) landingTotalStudentsEl.textContent = `${totalStudents} Kayıtlı Öğrenci`;
+        if (landingTotalStudentsEl) landingTotalStudentsEl.textContent = `${uniqueStudentCount} Kayıtlı Öğrenci`;
 
         const container = document.getElementById('branchCardsContainer');
         if (container && this.data.branches) {
