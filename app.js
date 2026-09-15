@@ -1323,28 +1323,33 @@ class AppState {
             { key: 'Speaking', name: 'Speaking (Konuşma)', icon: 'mic', badge: 'bg-purple-500/10 text-purple-400 border-purple-500/20' }
         ];
 
-        // 1. Fetch from Supabase exam_grades table for currentClassId
+        // 1. Fetch from Supabase exam_grades table safely (JS filtering to avoid PostgREST case-sensitivity issue)
         let dbGrades = [];
         let gradesMap = new Map();
-        if (supabaseClient && currentClassId) {
+        if (supabaseClient) {
             try {
                 const { data: gradesData, error } = await supabaseClient
                     .from('exam_grades')
-                    .select('*')
-                    .eq('classId', currentClassId);
+                    .select('*');
 
                 if (!error && gradesData) {
-                    dbGrades = gradesData;
-                    gradesData.forEach(g => {
-                        const skillKey = g.skill || 'Reading';
-                        gradesMap.set(`grade_${g.studentId}_${skillKey}`, g);
-                        gradesMap.set(`grade_${g.studentId}_${skillKey.toLowerCase()}`, g);
+                    dbGrades = gradesData.filter(g => String(g.classId || g['classId']) === String(currentClassId));
+                    dbGrades.forEach(g => {
+                        const sId = g.studentId || g['studentId'];
+                        const sk = (g.skill || g['skill'] || 'reading').toLowerCase();
+                        if (sId) {
+                            gradesMap.set(`${sId}_${sk}`, g);
+                            gradesMap.set(`grade_${sId}_${sk}`, g);
+                        }
                     });
+                } else if (error) {
+                    console.error("Supabase exam_grades read error:", error);
                 }
             } catch (err) {
-                console.error("Supabase exam_grades fetch error:", err);
+                console.error("Supabase fetch error:", err);
             }
         }
+        this.classGrades = dbGrades;
         this.data.skillsGradesMap = gradesMap;
         this.data.dbGrades = dbGrades;
 
@@ -1370,14 +1375,19 @@ class AppState {
             let countedFinals = 0;
 
             const rowsHtml = SKILLS.map(sk => {
-                const gradeRecord = (dbGrades || []).find(g => 
-                    String(g.studentId) === String(student.id) && 
-                    g.skill && 
-                    g.skill.toLowerCase() === sk.key.toLowerCase()
-                ) || gradesMap.get(`grade_${student.id}_${sk.key}`) || gradesMap.get(`grade_${student.id}_${sk.key.toLowerCase()}`) || {};
+                const sId = student.id;
+                const skKeyLower = sk.key.toLowerCase();
+                const gradeRecord = gradesMap.get(`${sId}_${skKeyLower}`) || 
+                                    gradesMap.get(`grade_${sId}_${skKeyLower}`) || 
+                                    (dbGrades || []).find(g => String(g.studentId || g['studentId']) === String(sId) && g.skill && g.skill.toLowerCase() === skKeyLower) || 
+                                    {};
 
-                const mVal = gradeRecord.midtermScore;
-                const fVal = gradeRecord.finalScore;
+                const mVal = gradeRecord.midtermScore ?? gradeRecord['midtermScore'] ?? null;
+                const fVal = gradeRecord.finalScore ?? gradeRecord['finalScore'] ?? null;
+                const analysisText = gradeRecord.homeworkAnalysis || gradeRecord['homeworkAnalysis'] || 'Henüz değerlendirme eklenmedi.';
+                const fileName = gradeRecord.fileName || gradeRecord['fileName'] || '';
+                const fileUrl = gradeRecord.fileUrl || gradeRecord['fileUrl'] || '';
+                const hasFile = Boolean(fileName || fileUrl);
 
                 const hasMidterm = mVal !== undefined && mVal !== null && mVal !== '';
                 const hasFinal = fVal !== undefined && fVal !== null && fVal !== '';
@@ -1387,12 +1397,7 @@ class AppState {
 
                 const displayMidterm = mScore !== null ? `${mScore} / 100` : '-';
                 const displayFinal = fScore !== null ? `${fScore} / 100` : '-';
-                const displayAnalysis = gradeRecord.homeworkAnalysis && gradeRecord.homeworkAnalysis.trim() !== '' 
-                    ? gradeRecord.homeworkAnalysis 
-                    : 'Henüz değerlendirme eklenmedi.';
-                const fileName = gradeRecord.fileName || '';
-                const fileUrl = gradeRecord.fileUrl || '';
-                const hasFile = Boolean(fileName || fileUrl);
+                const displayAnalysis = analysisText;
 
                 if (mScore !== null) {
                     midtermSum += mScore;
