@@ -1451,7 +1451,7 @@ class AppState {
                         <!-- İşlem Butonu -->
                         <td class="py-3 px-4 text-right">
                             ${canEditSkill ? `
-                                <button onclick="appState.openSkillGradeModal('${student.id}', '${(student.name || '').replace(/'/g, "\\'")}', '${sk.key}')" 
+                                <button onclick="appState.openSkillGradeModal('${student.id}', '${sk.key}')" 
                                         class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md shadow-purple-600/20 transition-all inline-flex items-center space-x-1">
                                     <i data-lucide="edit-3" class="w-3 h-3"></i>
                                     <span>Düzenle</span>
@@ -1551,7 +1551,7 @@ class AppState {
         return this.renderGradesTab();
     }
 
-    openSkillGradeModal(studentId, studentName, skillKey = 'Reading') {
+    openSkillGradeModal(studentId, skillKey = 'Reading') {
         if (this.isStudent()) {
             this.showToast("Öğrenciler not ve analiz değiştiremez!", "warning");
             return;
@@ -1576,47 +1576,42 @@ class AppState {
             return;
         }
 
+        const currentClassId = this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
         const student = (this.data.students || []).find(s => String(s.id) === String(studentId));
-        const realStudentName = studentName || (student ? student.name : 'Öğrenci');
-        const realClassId = this.currentClassId || (this.currentClass && this.currentClass.id) || (student && student.classId) || this.selectedClassId;
+        if (!student) return;
 
-        // Dynamic State Object as requested by user
-        this.activeModalData = {
-            studentId: String(studentId),
-            studentName: realStudentName,
+        this.currentEditingGrade = {
+            studentId: student.id,
+            studentName: student.name,
             skill: skillKey,
-            classId: realClassId
+            classId: currentClassId
         };
+        this.activeModalData = this.currentEditingGrade;
 
-        console.log("Opening skill grade modal for:", this.activeModalData);
+        console.log("Opening skill grade modal for real student:", this.currentEditingGrade);
 
         const gradesList = this.classGrades || this.data.dbGrades || [];
-        const existing = gradesList.find(
-            g => String(g.studentId) === String(studentId) && g.skill && g.skill.toLowerCase() === skillKey.toLowerCase()
-        ) || (this.data.skillsGradesMap && (this.data.skillsGradesMap.get(`grade_${studentId}_${skillKey}`) || this.data.skillsGradesMap.get(`grade_${studentId}_${skillKey.toLowerCase()}`)));
+        const existing = gradesList.find(g => 
+            String(g.studentId) === String(student.id) && 
+            g.skill && 
+            g.skill.toLowerCase() === skillKey.toLowerCase()
+        ) || (this.data.skillsGradesMap && (this.data.skillsGradesMap.get(`grade_${student.id}_${skillKey}`) || this.data.skillsGradesMap.get(`grade_${student.id}_${skillKey.toLowerCase()}`)));
 
         this.pendingExamFileData = existing ? (existing.fileUrl || null) : null;
         this.pendingExamFileName = existing ? (existing.fileName || null) : null;
         this.pendingExamFileSize = null;
 
-        if (document.getElementById('modalExamStudentId')) document.getElementById('modalExamStudentId').value = studentId;
+        if (document.getElementById('modalExamStudentId')) document.getElementById('modalExamStudentId').value = student.id;
         if (document.getElementById('modalExamSkill')) document.getElementById('modalExamSkill').value = skillKey;
-        if (document.getElementById('modalExamStudentName')) document.getElementById('modalExamStudentName').value = `${realStudentName} — ${skillKey}`;
+        if (document.getElementById('modalExamStudentName')) document.getElementById('modalExamStudentName').value = `${student.name} — ${skillKey}`;
         if (document.getElementById('examModalTitle')) {
-            document.getElementById('examModalTitle').innerHTML = `<i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i><span>${realStudentName} — ${skillKey} Notu & Analizi</span>`;
+            document.getElementById('examModalTitle').innerHTML = `<i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i><span>${student.name} — ${skillKey} Notu & Analizi</span>`;
         }
 
-        // If an existing record has non-null/non-undefined scores, show them; otherwise leave input completely empty ('')
-        const mScore = (existing && existing.midtermScore !== null && existing.midtermScore !== undefined && existing.midtermScore !== '') 
-            ? String(existing.midtermScore) 
-            : '';
-
-        const fScore = (existing && existing.finalScore !== null && existing.finalScore !== undefined && existing.finalScore !== '') 
-            ? String(existing.finalScore) 
-            : '';
-
-        const hwAnalysis = (existing && existing.homeworkAnalysis) ? existing.homeworkAnalysis : '';
-        const fileUrl = (existing && existing.fileUrl) ? existing.fileUrl : '';
+        const mScore = (existing && existing.midtermScore !== null && existing.midtermScore !== undefined && existing.midtermScore !== '') ? String(existing.midtermScore) : '';
+        const fScore = (existing && existing.finalScore !== null && existing.finalScore !== undefined && existing.finalScore !== '') ? String(existing.finalScore) : '';
+        const hwAnalysis = existing?.homeworkAnalysis ?? '';
+        const fileUrl = existing?.fileUrl ?? '';
 
         if (document.getElementById('modalExamMidterm')) document.getElementById('modalExamMidterm').value = mScore;
         if (document.getElementById('modalMidtermScore')) document.getElementById('modalMidtermScore').value = mScore;
@@ -1641,12 +1636,11 @@ class AppState {
     }
 
     openEditExamModal(studentId, skillKey = 'Reading') {
-        const student = (this.data.students || []).find(s => String(s.id) === String(studentId));
-        const name = student ? student.name : '';
-        return this.openSkillGradeModal(studentId, name, skillKey);
+        return this.openSkillGradeModal(studentId, skillKey);
     }
 
     closeExamModal() {
+        this.currentEditingGrade = null;
         this.activeModalData = null;
         this.pendingExamFileData = null;
         this.pendingExamFileName = null;
@@ -1704,46 +1698,44 @@ class AppState {
     }
 
     async saveSkillGradeModal() {
-        // Fallback check if activeModalData is not set
-        if (!this.activeModalData || !this.activeModalData.studentId) {
+        if (!this.currentEditingGrade || !this.currentEditingGrade.studentId) {
             const sId = document.getElementById('modalExamStudentId')?.value;
             const sk = document.getElementById('modalExamSkill')?.value || 'Reading';
             const student = (this.data.students || []).find(s => String(s.id) === String(sId));
-            this.activeModalData = {
-                studentId: String(sId || ''),
-                studentName: student ? student.name : 'Öğrenci',
-                skill: sk,
-                classId: this.currentClassId || (this.currentClass && this.currentClass.id) || (student && student.classId) || this.selectedClassId
-            };
+            const currentClassId = this.currentClassId || (this.currentClass && this.currentClass.id) || (student && student.classId) || this.selectedClassId;
+
+            if (student) {
+                this.currentEditingGrade = {
+                    studentId: student.id,
+                    studentName: student.name,
+                    skill: sk,
+                    classId: currentClassId
+                };
+            } else {
+                console.error("No current editing grade or student found.");
+                return;
+            }
         }
 
-        const studentId = this.activeModalData.studentId;
-        const studentName = this.activeModalData.studentName;
-        const skillKey = this.activeModalData.skill;
-        const classId = this.activeModalData.classId || this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
-
-        const midtermRaw = (document.getElementById('modalMidtermScore')?.value || document.getElementById('modalExamMidterm')?.value || '').trim();
-        const finalRaw = (document.getElementById('modalFinalScore')?.value || document.getElementById('modalExamFinal')?.value || '').trim();
-        const analysisRaw = (document.getElementById('modalHomeworkAnalysis')?.value || document.getElementById('modalExamHwAnalysis')?.value || '').trim();
-        const fileUrlRaw = (this.pendingExamFileData || document.getElementById('modalGradeFileUrl')?.value || '').trim();
-        const fileNameRaw = (this.pendingExamFileName || '').trim();
-
-        const midtermScore = midtermRaw !== '' ? Number(midtermRaw) : null;
-        const finalScore = finalRaw !== '' ? Number(finalRaw) : null;
+        const midtermVal = (document.getElementById('modalMidtermScore')?.value || document.getElementById('modalExamMidterm')?.value || '').trim();
+        const finalVal = (document.getElementById('modalFinalScore')?.value || document.getElementById('modalExamFinal')?.value || '').trim();
+        const analysisVal = (document.getElementById('modalHomeworkAnalysis')?.value || document.getElementById('modalExamHwAnalysis')?.value || '').trim();
+        const fileUrlVal = (this.pendingExamFileData || document.getElementById('modalGradeFileUrl')?.value || '').trim();
+        const fileNameVal = (this.pendingExamFileName || '').trim();
 
         const currentUser = this.data.currentUser || {};
 
         const payload = {
-            id: `grade_${studentId}_${skillKey}`,
-            classId: classId,
-            studentId: String(studentId),
-            studentName: studentName,
-            skill: skillKey,
-            midtermScore: midtermVal !== '' && midtermVal !== null && midtermVal !== undefined ? Number(midtermVal) : null,
-            finalScore: finalVal !== '' && finalVal !== null && finalVal !== undefined ? Number(finalVal) : null,
-            homeworkAnalysis: analysisVal.trim(),
-            fileUrl: fileUrlVal.trim(),
-            fileName: fileNameVal.trim(),
+            id: `grade_${this.currentEditingGrade.studentId}_${this.currentEditingGrade.skill}`,
+            classId: this.currentEditingGrade.classId,
+            studentId: String(this.currentEditingGrade.studentId),
+            studentName: this.currentEditingGrade.studentName,
+            skill: this.currentEditingGrade.skill,
+            midtermScore: midtermVal !== '' ? Number(midtermVal) : null,
+            finalScore: finalVal !== '' ? Number(finalVal) : null,
+            homeworkAnalysis: analysisVal,
+            fileUrl: fileUrlVal,
+            fileName: fileNameVal,
             teacherName: currentUser.name || currentUser.username || 'Öğretmen',
             teacherId: String(currentUser.id || ''),
             updatedAt: new Date().toISOString()
