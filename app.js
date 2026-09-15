@@ -251,19 +251,30 @@ class AppState {
 
     saveLocalData() {
         try {
-            // Yalnızca oturum ve temel ayarları sakla, devasa veritabanını değil
+            // Sadece hafif verileri (aktif oturum vb.) tut, devasa veri tabanını ve ağır nesneleri atla
             if (this.data && this.data.currentUser) {
-                localStorage.setItem('currentUser', JSON.stringify(this.data.currentUser));
+                const lightUser = {
+                    id: this.data.currentUser.id,
+                    name: this.data.currentUser.name,
+                    role: this.data.currentUser.role,
+                    username: this.data.currentUser.username,
+                    skill: this.data.currentUser.skill || this.data.currentUser.skills || ''
+                };
+                localStorage.setItem('currentUser', JSON.stringify(lightUser));
             } else {
                 localStorage.removeItem('currentUser');
             }
         } catch (e) {
-            console.warn('LocalStorage kotası aşıldı, yazma atlandı.');
+            console.warn("LocalStorage kotası dolu, yerel yazma pas geçildi (Bulut öncelikli çalışıyor).");
         }
     }
 
     saveData() {
-        this.saveLocalData();
+        try {
+            this.saveLocalData();
+        } catch (e) {
+            console.warn("LocalStorage kotası dolu, yerel yazma pas geçildi.");
+        }
     }
 
     // Local Storage Persistence
@@ -1717,8 +1728,13 @@ class AppState {
             }
         }
 
-        const midtermVal = (document.getElementById('modalMidtermScore')?.value || document.getElementById('modalExamMidterm')?.value || '').trim();
-        const finalVal = (document.getElementById('modalFinalScore')?.value || document.getElementById('modalExamFinal')?.value || '').trim();
+        const studentId = this.currentEditingGrade.studentId;
+        const studentName = this.currentEditingGrade.studentName;
+        const skillKey = this.currentEditingGrade.skill;
+        const classId = this.currentEditingGrade.classId;
+
+        const midtermRaw = (document.getElementById('modalMidtermScore')?.value || document.getElementById('modalExamMidterm')?.value || '').trim();
+        const finalRaw = (document.getElementById('modalFinalScore')?.value || document.getElementById('modalExamFinal')?.value || '').trim();
         const analysisVal = (document.getElementById('modalHomeworkAnalysis')?.value || document.getElementById('modalExamHwAnalysis')?.value || '').trim();
         const fileUrlVal = (this.pendingExamFileData || document.getElementById('modalGradeFileUrl')?.value || '').trim();
         const fileNameVal = (this.pendingExamFileName || '').trim();
@@ -1726,13 +1742,13 @@ class AppState {
         const currentUser = this.data.currentUser || {};
 
         const payload = {
-            id: `grade_${this.currentEditingGrade.studentId}_${this.currentEditingGrade.skill}`,
-            classId: this.currentEditingGrade.classId,
-            studentId: String(this.currentEditingGrade.studentId),
-            studentName: this.currentEditingGrade.studentName,
-            skill: this.currentEditingGrade.skill,
-            midtermScore: midtermVal !== '' ? Number(midtermVal) : null,
-            finalScore: finalVal !== '' ? Number(finalVal) : null,
+            id: `grade_${studentId}_${skillKey}`,
+            classId: classId,
+            studentId: String(studentId),
+            studentName: studentName,
+            skill: skillKey,
+            midtermScore: midtermRaw !== '' ? Number(midtermRaw) : null,
+            finalScore: finalRaw !== '' ? Number(finalRaw) : null,
             homeworkAnalysis: analysisVal,
             fileUrl: fileUrlVal,
             fileName: fileNameVal,
@@ -1741,8 +1757,9 @@ class AppState {
             updatedAt: new Date().toISOString()
         };
 
-        console.log("Supabase exam_grades saving dynamic payload:", payload);
+        console.log("Supabase exam_grades direct upserting payload:", payload);
 
+        // 1. Direct write to Supabase (bypassing LocalStorage)
         if (supabaseClient) {
             const { data, error } = await supabaseClient
                 .from('exam_grades')
