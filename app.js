@@ -140,12 +140,26 @@ class AppState {
         this.init();
     }
 
+    hydrateCurrentUser() {
+        if (this.data && this.data.currentUser) {
+            const teacherList = this.data.teachers || this.data.users || [];
+            const matchedTeacher = teacherList.find(t => 
+                String(t.id) === String(this.data.currentUser.id) || 
+                (t.username && this.data.currentUser.username && String(t.username).toLowerCase() === String(this.data.currentUser.username).toLowerCase())
+            );
+            if (matchedTeacher) {
+                this.data.currentUser = { ...matchedTeacher, ...this.data.currentUser };
+            }
+        }
+    }
+
     async init() {
         const dateInput = document.getElementById('globalAttendanceDate');
         if (dateInput) {
             dateInput.value = this.selectedDate;
         }
 
+        this.hydrateCurrentUser();
         this.renderAuthHeader();
         this.renderView();
         
@@ -235,6 +249,8 @@ class AppState {
             this.data.students = this.deduplicateStudents(this.data.students);
             this.data.users = Array.from(new Map(this.data.users.map(u => [u.id, u])).values());
 
+            this.hydrateCurrentUser();
+
             this.saveLocalData();
             this.renderAuthHeader();
             if (this.currentView === 'landing') this.renderLandingScreen();
@@ -258,6 +274,8 @@ class AppState {
                     name: this.data.currentUser.name,
                     role: this.data.currentUser.role,
                     username: this.data.currentUser.username,
+                    branchAccess: this.data.currentUser.branchAccess || this.data.currentUser.branchPermission || this.data.currentUser.branch || '',
+                    branchPermission: this.data.currentUser.branchPermission || this.data.currentUser.branchAccess || '',
                     skill: this.data.currentUser.skill || this.data.currentUser.skills || ''
                 };
                 localStorage.setItem('currentUser', JSON.stringify(lightUser));
@@ -410,11 +428,14 @@ class AppState {
     }
 
     hasBranchPermission(branchId) {
-        if (!this.data.currentUser) return false;
-        if (this.data.currentUser.role === 'admin') return true;
-        if (this.data.currentUser.role === 'student') return this.data.currentUser.assignedBranchId === branchId;
-        if (this.data.currentUser.branchPermission === 'all') return true;
-        return this.data.currentUser.branchPermission === branchId;
+        const user = this.data.currentUser;
+        if (!user) return false;
+        if (user.role === 'admin') return true;
+        if (user.role === 'student') return user.assignedBranchId === branchId;
+
+        const access = String(user.branchAccess || user.branchPermission || user.branch || '').toLowerCase();
+        if (access === 'all' || access === '' || access === 'undefined') return true;
+        return access.includes(String(branchId).toLowerCase());
     }
 
     goBack() {
