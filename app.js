@@ -506,11 +506,23 @@ class AppState {
         if (user) {
             const currentTeacher = (this.data?.teachers || this.data?.users || []).find(t => t.id === this.data.currentUser?.id || t.username === this.data.currentUser?.username);
             const userAvatar = currentTeacher?.avatar || this.data.currentUser?.avatar || 'assets/avatar.png';
-            const userBadge = currentTeacher?.branchAccess || currentTeacher?.branchPermission || this.data.currentUser?.branchAccess || this.data.currentUser?.branchPermission || 'Tüm Şubeler Öğretmeni';
+            
+            const rawAccess = (currentUser?.branchAccess || currentUser?.branchPermission || currentUser?.branch || currentUser?.skills || '').toString().toLowerCase();
+
+            let displayBadge = 'Öğretmen';
+            if (rawAccess === 'all' || currentUser?.role === 'admin') {
+              displayBadge = 'Tüm Şubeler Öğretmeni';
+            } else if (rawAccess === 'gaziemir') {
+              displayBadge = 'Gaziemir Şubesi';
+            } else if (rawAccess === 'alsancak') {
+              displayBadge = 'Alsancak Şubesi';
+            } else if (currentUser?.branchAccess) {
+              displayBadge = currentUser.branchAccess;
+            }
 
             const isAdmin = user.role === 'admin';
             const isStudent = user.role === 'student';
-            const roleBadge = isAdmin ? 'Yönetici (Admin)' : isStudent ? '🎓 Öğrenci (Salt Okunur)' : (userBadge || user.title || 'Öğretmen');
+            const roleBadge = isAdmin ? 'Yönetici (Admin)' : isStudent ? '🎓 Öğrenci (Salt Okunur)' : displayBadge;
             const badgeColor = isAdmin ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
                                isStudent ? 'bg-sky-500/10 text-sky-300 border-sky-500/30' :
                                'bg-teal-500/10 text-teal-300 border-teal-500/30';
