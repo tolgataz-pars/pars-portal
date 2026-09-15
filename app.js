@@ -2297,12 +2297,7 @@ class AppState {
                         </span>
                     </td>
 
-                    <!-- 3. Yaşı -->
-                    <td class="py-4 px-4 text-xs font-semibold text-slate-300">
-                        ${student.age} Yaş
-                    </td>
-
-                    <!-- 4. Tarih (Datepicker - Disabled for Students) -->
+                    <!-- 3. Tarih (Datepicker - Disabled for Students) -->
                     <td class="py-4 px-4 text-xs text-slate-300">
                         <input type="date" style="color-scheme: dark;" ${isStudent ? 'disabled' : ''} value="${student.date || this.selectedDate}" 
                                onchange="appState.updateStudentDate('${student.id}', this.value)"
@@ -2434,7 +2429,6 @@ class AppState {
         document.getElementById('modalStudentId').value = '';
         document.getElementById('modalStudentName').value = '';
         document.getElementById('modalStudentClassText').value = currentClass.name;
-        document.getElementById('modalStudentAge').value = '22';
         document.getElementById('modalStudentDate').value = this.selectedDate;
         document.getElementById('modalStudentAttendance').value = 'Geldi';
 
@@ -2456,7 +2450,6 @@ class AppState {
         document.getElementById('modalStudentId').value = student.id;
         document.getElementById('modalStudentName').value = student.name;
         document.getElementById('modalStudentClassText').value = currentClass ? currentClass.name : '';
-        document.getElementById('modalStudentAge').value = student.age;
         document.getElementById('modalStudentDate').value = student.date || this.selectedDate;
         document.getElementById('modalStudentAttendance').value = student.attendance;
 
@@ -2476,7 +2469,6 @@ class AppState {
         }
         const id = document.getElementById('modalStudentId').value;
         const name = document.getElementById('modalStudentName').value.trim();
-        const age = parseInt(document.getElementById('modalStudentAge').value, 10);
         const date = document.getElementById('modalStudentDate').value;
         const attendance = document.getElementById('modalStudentAttendance').value;
 
@@ -2486,7 +2478,6 @@ class AppState {
             targetStudent = this.data.students.find(s => s.id === id);
             if (targetStudent) {
                 targetStudent.name = name;
-                targetStudent.age = age;
                 targetStudent.date = date;
                 targetStudent.attendance = attendance;
                 this.showToast("Öğrenci bilgileri güncellendi.", "success");
@@ -2496,7 +2487,6 @@ class AppState {
                 id: `std-${Date.now()}`,
                 classId: this.selectedClassId,
                 name: name,
-                age: age,
                 date: date,
                 attendance: attendance
             };
@@ -2988,7 +2978,7 @@ class AppState {
                 ["Seviye:", currentClass.level, "", "Ders Saatleri:", currentClass.schedule || "Belirtilmedi"],
                 ["Toplam Öğrenci:", classStudents.length, "Katılan (Geldi):", presentCount, "Katılmayan (Gelmedi):", absentCount, "Katılım Oranı:", `%${rate}`],
                 [""],
-                ["Sıra No", "Öğrenci Adı Soyadı", "Sınıfı", "Yaşı", "Yoklama Tarihi", "Yoklama Durumu"]
+                ["Sıra No", "Öğrenci Adı Soyadı", "Sınıfı", "Yoklama Tarihi", "Yoklama Durumu"]
             ];
 
             classStudents.forEach((s, idx) => {
@@ -2996,7 +2986,6 @@ class AppState {
                     idx + 1,
                     s.name,
                     currentClass.name,
-                    s.age,
                     s.date || this.selectedDate,
                     s.attendance
                 ]);
@@ -3008,7 +2997,6 @@ class AppState {
                 { wch: 8 },
                 { wch: 25 },
                 { wch: 30 },
-                { wch: 10 },
                 { wch: 15 },
                 { wch: 18 }
             ];
@@ -3036,10 +3024,10 @@ class AppState {
         }
 
         let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-        csvContent += "Ad Soyad;Sınıfı;Yaşı;Tarih;Yoklama Durumu\n";
+        csvContent += "Ad Soyad;Sınıfı;Tarih;Yoklama Durumu\n";
 
         classStudents.forEach(s => {
-            csvContent += `"${s.name}";"${currentClass.name}";${s.age};"${s.date || this.selectedDate}";"${s.attendance}"\n`;
+            csvContent += `"${s.name}";"${currentClass.name}";"${s.date || this.selectedDate}";"${s.attendance}"\n`;
         });
 
         const encodedUri = encodeURI(csvContent);
