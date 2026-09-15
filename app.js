@@ -251,9 +251,14 @@ class AppState {
 
     saveLocalData() {
         try {
-            localStorage.setItem('PARS_PORTAL_DATA_V3', JSON.stringify(this.data));
+            // Yalnızca oturum ve temel ayarları sakla, devasa veritabanını değil
+            if (this.data && this.data.currentUser) {
+                localStorage.setItem('currentUser', JSON.stringify(this.data.currentUser));
+            } else {
+                localStorage.removeItem('currentUser');
+            }
         } catch (e) {
-            console.error("Local storage save error:", e);
+            console.warn('LocalStorage kotası aşıldı, yazma atlandı.');
         }
     }
 
@@ -263,18 +268,15 @@ class AppState {
 
     // Local Storage Persistence
     loadData() {
-        let data;
+        let data = JSON.parse(JSON.stringify(INITIAL_DATA));
+
         try {
-            const saved = localStorage.getItem('PARS_PORTAL_DATA_V3');
-            if (saved) {
-                data = JSON.parse(saved);
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                data.currentUser = JSON.parse(savedUser);
             }
         } catch (e) {
             console.error("Local storage load error:", e);
-        }
-
-        if (!data) {
-            data = JSON.parse(JSON.stringify(INITIAL_DATA));
         }
 
         if (data.classes) {
@@ -1221,21 +1223,21 @@ class AppState {
         this.switchClassTab(this.activeClassTab || 'yoklama');
     }
 
-    async loadCurriculumFromSupabase(classId) {
+    async loadCurriculumFromSupabase(targetClassId) {
         if (!supabaseClient) return;
-        const currentClassId = classId || this.selectedClassId;
+        const currentClassId = targetClassId || this.selectedClassId;
         if (!currentClassId) return;
 
         try {
-            const { data: curriculumList, error } = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('curriculum')
                 .select('*')
                 .eq('classId', currentClassId);
 
-            if (curriculumList && Array.isArray(curriculumList)) {
+            if (!error && data) {
                 const otherItems = (this.data.curriculum || []).filter(c => c.classId !== currentClassId);
-                this.data.curriculum = [...otherItems, ...curriculumList];
-                this.saveData();
+                this.data.curriculum = [...otherItems, ...data];
+                this.renderCurriculumList(data);
             }
         } catch (err) {
             console.error("Supabase curriculum fetch error:", err);
@@ -1512,12 +1514,12 @@ class AppState {
     // -------------------------------------------------------------
     // MÜFREDAT VE KONU PLANLAMASI LOGİC
     // -------------------------------------------------------------
-    renderCurriculumList() {
+    renderCurriculumList(customItems) {
         const grid = document.getElementById('curriculumListGrid');
         if (!grid) return;
 
         const currentClassId = this.selectedClassId;
-        const items = (this.data.curriculum || []).filter(c => c.classId === currentClassId);
+        const items = customItems || (this.data.curriculum || []).filter(c => c.classId === currentClassId);
 
         const user = this.data.currentUser;
         const isAdmin = this.isAdmin();
