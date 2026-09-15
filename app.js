@@ -113,6 +113,15 @@ const INITIAL_DATA = {
 
 class AppState {
     constructor() {
+        // Versiyon kontrolü ile localStorage önbelleğini bir kereye mahsus temizle
+        const DB_VERSION = "v3_clean_classes";
+        if (localStorage.getItem("portal_db_version") !== DB_VERSION) {
+            localStorage.removeItem("classes");
+            localStorage.removeItem("students");
+            localStorage.removeItem("PARS_PORTAL_DATA_V3");
+            localStorage.setItem("portal_db_version", DB_VERSION);
+        }
+
         this.data = this.loadData();
         this.currentView = 'landing'; // 'landing' | 'branch' | 'classDetail'
         this.selectedBranchId = null;
