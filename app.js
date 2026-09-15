@@ -1321,9 +1321,14 @@ class AppState {
         }
 
         const students = (this.data.students || []).filter(s => String(s.classId) === String(currentClassId));
-        const currentUser = this.data.currentUser;
-        const userSkill = (currentUser?.skill || currentUser?.skills || '').toLowerCase();
-        const isAdmin = currentUser?.role === 'admin' || this.isAdmin();
+        const currentUser = this.data.currentUser || {};
+        const isAdmin = currentUser.role === 'admin' || this.isAdmin();
+
+        // Dizi veya metin olma durumunu güvenli kontrol et:
+        const rawSkills = currentUser.skills || currentUser.skill || [];
+        const userSkillsList = Array.isArray(rawSkills) 
+          ? rawSkills.map(s => String(s).toLowerCase()) 
+          : [String(rawSkills).toLowerCase()];
 
         const skills = [
             { key: 'Reading', label: 'Reading (Okuma)' },
@@ -1372,7 +1377,7 @@ class AppState {
                 if (midterm !== null) { midtermSum += Number(midterm); midtermCount++; }
                 if (final !== null) { finalSum += Number(final); finalCount++; }
 
-                const canEdit = !this.isStudent() && (isAdmin || userSkill.includes(sk.key.toLowerCase()) || userSkill.includes('tüm') || userSkill.includes('tum'));
+                const canEdit = !this.isStudent() && (isAdmin || userSkillsList.some(s => s.includes(sk.key.toLowerCase()) || s === 'all' || s.includes('tüm') || s.includes('tum')));
                 const editPanelId = `edit-panel-${student.id}-${sk.key}`;
 
                 const cleanStudentName = (student.name || 'Öğrenci').replace(/'/g, "\\'");
