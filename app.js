@@ -1279,7 +1279,7 @@ class AppState {
         } else if (tabName === 'odev') {
             if (btnOdev) btnOdev.className = "px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-amber-600 text-white shadow-lg shadow-amber-600/30 shrink-0";
             if (panelOdev) panelOdev.classList.remove('hidden');
-            this.renderHomeworkList();
+            await this.renderHomeworksTab();
         } else if (tabName === 'sinav') {
             if (btnSinav) btnSinav.className = "px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-purple-600 text-white shadow-lg shadow-purple-600/30 shrink-0";
             if (panelSinav) panelSinav.classList.remove('hidden');
@@ -1766,20 +1766,40 @@ class AppState {
     // -------------------------------------------------------------
     // ÖDEVLER VE DOSYA YÜKLEME / İNDİRME LOGİC
     // -------------------------------------------------------------
-    renderHomeworkList() {
-        const grid = document.getElementById('homeworkListGrid');
+    async renderHomeworksTab() {
+        const classId = this.currentClassId || this.selectedClassId;
+        const grid = document.getElementById('homeworkListGrid') || document.getElementById('homeworkListContainer') || document.getElementById('homeworkList');
         if (!grid) return;
 
-        const currentClassId = this.selectedClassId;
-        const items = (this.data.homeworks || []).filter(h => h.classId === currentClassId);
+        let list = [];
+        if (supabaseClient && classId) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('homeworks')
+                    .select('*')
+                    .eq('classId', classId)
+                    .order('createdAt', { ascending: false });
 
-        const user = this.data.currentUser;
-        const isAdmin = this.isAdmin();
+                if (!error && data) {
+                    list = data;
+                    const otherItems = (this.data.homeworks || []).filter(h => h.classId !== classId);
+                    this.data.homeworks = [...otherItems, ...data];
+                    this.saveData();
+                } else {
+                    list = (this.data.homeworks || []).filter(h => h.classId === classId);
+                }
+            } catch (err) {
+                console.error("Supabase homeworks fetch error:", err);
+                list = (this.data.homeworks || []).filter(h => h.classId === classId);
+            }
+        } else {
+            list = (this.data.homeworks || []).filter(h => h.classId === classId);
+        }
 
-        if (items.length === 0) {
+        if (list.length === 0) {
             grid.innerHTML = `
                 <div class="col-span-full bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center text-slate-500 space-y-3">
-                    <i data-lucide="file-text" class="w-12 h-12 mx-auto text-slate-700"></i>
+                    <i data-lucide="file-text" class="w-12 h-12 mx-auto text-slate-700 opacity-40"></i>
                     <p class="text-white font-bold text-base">Henüz Ödev veya Materyal Yüklenmedi</p>
                     <p class="text-xs text-slate-400">Bu sınıf için henüz ödev dosyası yüklenmedi. Öğretmenler yukarıdaki butonla bilgisayarlarından dosya yükleyebilirler.</p>
                 </div>
@@ -1788,9 +1808,17 @@ class AppState {
             return;
         }
 
-        grid.innerHTML = items.map(item => {
-            const isOwner = user && user.role === 'teacher' && user.name.toLowerCase().trim() === item.teacher.toLowerCase().trim();
-            const canDelete = isAdmin || isOwner;
+        const currentUser = this.data.currentUser;
+        const isAdmin = this.isAdmin();
+
+        grid.innerHTML = list.map(item => {
+            const canDelete = currentUser && (
+                isAdmin ||
+                (item.authorId && String(currentUser.id) === String(item.authorId)) ||
+                (item.authorName && currentUser.name && item.authorName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
+                (item.teacher && currentUser.name && item.teacher.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+            );
+
             const ext = item.fileName ? item.fileName.split('.').pop().toLowerCase() : 'file';
 
             let fileIcon = 'file-text';
@@ -1824,15 +1852,20 @@ class AppState {
                                     <button onclick="appState.deleteHomeworkItem('${item.id}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-400 transition-colors" title="Ödevi Sil">
                                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                     </button>
-                                ` : ''}
+                                ` : `
+                                    <span class="px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-[10px] text-slate-400 font-medium flex items-center space-x-1" title="Sadece ${item.teacher || 'ilgili öğretmen'} silebilir">
+                                        <i data-lucide="lock" class="w-3 h-3 text-amber-400"></i>
+                                        <span>${item.teacher || 'Öğretmen'}'a Ait</span>
+                                    </span>
+                                `}
                             </div>
                         </div>
 
                         <h4 class="font-heading text-lg font-bold text-white group-hover:text-amber-300 transition-colors">
-                            ${item.title}
+                            ${item.title || 'Başlıksız Ödev'}
                         </h4>
 
-                        <p class="text-xs text-slate-400 leading-relaxed">
+                        <p class="text-xs text-slate-400 leading-relaxed whitespace-pre-line">
                             ${item.description || 'Açıklama bulunmuyor.'}
                         </p>
 
@@ -1847,8 +1880,8 @@ class AppState {
 
                     <div class="pt-4 border-t border-slate-800/80 space-y-3">
                         <div class="flex items-center justify-between text-xs text-slate-400">
-                            <span>Sorumlu: <strong class="text-slate-200">${item.teacher}</strong></span>
-                            <span class="text-amber-400 font-semibold">Son Teslim: ${item.dueDate}</span>
+                            <span>Sorumlu: <strong class="text-slate-200">${item.teacher || item.authorName || 'Öğretmen'}</strong></span>
+                            <span class="text-amber-400 font-semibold">Son Teslim: ${item.dueDate || '-'}</span>
                         </div>
 
                         <button onclick="appState.downloadHomeworkFile('${item.id}')"
@@ -1862,6 +1895,14 @@ class AppState {
         }).join('');
 
         if (window.lucide) window.lucide.createIcons();
+    }
+
+    renderHomeworkList(customItems) {
+        return this.renderHomeworksTab();
+    }
+
+    loadHomeworksFromSupabase(targetClassId) {
+        return this.renderHomeworksTab();
     }
 
     openAddHomeworkModal() {
@@ -1910,8 +1951,43 @@ class AppState {
         reader.readAsDataURL(file);
     }
 
-    handleSaveHomework(e) {
-        e.preventDefault();
+    async saveHomeworkModal(formData) {
+        const classId = this.currentClassId || this.selectedClassId;
+        const currentUser = this.data.currentUser;
+
+        const newItem = {
+            id: `hw-${Date.now()}`,
+            classId: classId,
+            title: formData.title,
+            description: formData.description,
+            dueDate: formData.dueDate,
+            createdAt: new Date().toISOString().split('T')[0],
+            teacher: currentUser ? (currentUser.name || currentUser.username) : 'Öğretmen',
+            fileName: formData.fileName || this.pendingHwFileName,
+            fileSize: formData.fileSize || this.pendingHwFileSize,
+            fileData: formData.fileData || this.pendingHwFileData
+        };
+
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('homeworks').upsert([newItem]);
+            if (error) {
+                console.error("Ödev kaydedilemedi:", error);
+                this.showToast("Hata: " + error.message, "error");
+                return;
+            }
+        }
+
+        if (!this.data.homeworks) this.data.homeworks = [];
+        this.data.homeworks.push(newItem);
+        this.saveData();
+
+        this.showToast(`'${newItem.title}' ödevi başarıyla yüklendi.`, "success");
+        this.closeHomeworkModal();
+        await this.renderHomeworksTab();
+    }
+
+    async handleSaveHomework(e) {
+        if (e) e.preventDefault();
         const title = document.getElementById('modalHwTitle').value.trim();
         const description = document.getElementById('modalHwDescription').value.trim();
         const dueDate = document.getElementById('modalHwDueDate').value;
@@ -1921,49 +1997,74 @@ class AppState {
             return;
         }
 
+        const classId = this.currentClassId || this.selectedClassId;
+        const currentUser = this.data.currentUser;
+
         const newItem = {
             id: `hw-${Date.now()}`,
-            classId: this.selectedClassId,
+            classId: classId,
             title: title,
             description: description,
             dueDate: dueDate,
             createdAt: new Date().toISOString().split('T')[0],
-            teacher: this.data.currentUser.name || 'Öğretmen',
+            teacher: currentUser ? (currentUser.name || currentUser.username) : 'Öğretmen',
             fileName: this.pendingHwFileName,
             fileSize: this.pendingHwFileSize,
             fileData: this.pendingHwFileData
         };
 
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('homeworks').upsert([newItem]);
+            if (error) {
+                console.error("Ödev kaydedilemedi:", error);
+                this.showToast("Hata: " + error.message, "error");
+                return;
+            }
+        }
+
         if (!this.data.homeworks) this.data.homeworks = [];
         this.data.homeworks.push(newItem);
-
         this.saveData();
-        if (supabaseClient) supabaseClient.from('homeworks').upsert(newItem);
+
         this.showToast(`'${newItem.title}' ödevi başarıyla yüklendi.`, "success");
         this.closeHomeworkModal();
-        this.renderHomeworkList();
+        await this.renderHomeworksTab();
     }
 
-    deleteHomeworkItem(hwId) {
+    async deleteHomeworkItem(hwId) {
         const item = (this.data.homeworks || []).find(h => h.id === hwId);
-        if (!item) return;
 
         const user = this.data.currentUser;
         const isAdmin = this.isAdmin();
-        const isOwner = user && user.role === 'teacher' && user.name.toLowerCase().trim() === item.teacher.toLowerCase().trim();
+        const canDelete = user && (
+            isAdmin ||
+            (item && item.authorId && String(user.id) === String(item.authorId)) ||
+            (item && item.authorName && user.name && item.authorName.trim().toLowerCase() === user.name.trim().toLowerCase()) ||
+            (item && item.teacher && user.name && item.teacher.trim().toLowerCase() === user.name.trim().toLowerCase())
+        );
 
-        if (!isAdmin && !isOwner) {
+        if (!canDelete) {
             this.showToast("Bu ödevi silme yetkiniz bulunmamaktadır!", "error");
             return;
         }
 
-        if (confirm(`'${item.title}' ödevini ve dosyasını silmek istediğinizden emin misiniz?`)) {
-            this.data.homeworks = this.data.homeworks.filter(h => h.id !== hwId);
-            if (supabaseClient) supabaseClient.from('homeworks').delete().eq('id', hwId);
+        if (confirm(`'${item ? item.title : 'Ödev'}' ödevini ve dosyasını silmek istediğinizden emin misiniz?`)) {
+            if (supabaseClient) {
+                const { error } = await supabaseClient.from('homeworks').delete().eq('id', hwId);
+                if (error) {
+                    this.showToast("Silme hatası: " + error.message, "error");
+                    return;
+                }
+            }
+            this.data.homeworks = (this.data.homeworks || []).filter(h => h.id !== hwId);
             this.saveData();
             this.showToast("Ödev ve bağlı dosya silindi.", "info");
-            this.renderHomeworkList();
+            await this.renderHomeworksTab();
         }
+    }
+
+    deleteHomework(hwId) {
+        return this.deleteHomeworkItem(hwId);
     }
 
     downloadHomeworkFile(hwId) {
