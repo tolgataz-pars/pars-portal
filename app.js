@@ -1313,6 +1313,7 @@ class AppState {
         ];
 
         // 1. Fetch from Supabase exam_grades table for currentClassId
+        let dbGrades = [];
         let gradesMap = new Map();
         if (supabaseClient && currentClassId) {
             try {
@@ -1322,9 +1323,11 @@ class AppState {
                     .eq('classId', currentClassId);
 
                 if (!error && gradesData) {
+                    dbGrades = gradesData;
                     gradesData.forEach(g => {
                         const skillKey = g.skill || 'Reading';
                         gradesMap.set(`grade_${g.studentId}_${skillKey}`, g);
+                        gradesMap.set(`grade_${g.studentId}_${skillKey.toLowerCase()}`, g);
                     });
                 }
             } catch (err) {
@@ -1332,6 +1335,7 @@ class AppState {
             }
         }
         this.data.skillsGradesMap = gradesMap;
+        this.data.dbGrades = dbGrades;
 
         if (students.length === 0) {
             container.innerHTML = `
@@ -1355,21 +1359,35 @@ class AppState {
             let countedFinals = 0;
 
             const rowsHtml = SKILLS.map(sk => {
-                const gradeKey = `grade_${student.id}_${sk.key}`;
-                const item = gradesMap.get(gradeKey) || {};
+                const gradeRecord = (dbGrades || []).find(g => 
+                    String(g.studentId) === String(student.id) && 
+                    g.skill && 
+                    g.skill.toLowerCase() === sk.key.toLowerCase()
+                ) || gradesMap.get(`grade_${student.id}_${sk.key}`) || gradesMap.get(`grade_${student.id}_${sk.key.toLowerCase()}`) || {};
 
-                const mScore = item.midtermScore !== undefined && item.midtermScore !== null ? Number(item.midtermScore) : 0;
-                const fScore = item.finalScore !== undefined && item.finalScore !== null ? Number(item.finalScore) : 0;
-                const comment = item.homeworkAnalysis || 'Henüz değerlendirme eklenmedi.';
-                const fileName = item.fileName || '';
-                const fileUrl = item.fileUrl || '';
+                const mVal = gradeRecord.midtermScore;
+                const fVal = gradeRecord.finalScore;
+
+                const hasMidterm = mVal !== undefined && mVal !== null && mVal !== '';
+                const hasFinal = fVal !== undefined && fVal !== null && fVal !== '';
+
+                const mScore = hasMidterm ? Number(mVal) : null;
+                const fScore = hasFinal ? Number(fVal) : null;
+
+                const displayMidterm = mScore !== null ? `${mScore} / 100` : '-';
+                const displayFinal = fScore !== null ? `${fScore} / 100` : '-';
+                const displayAnalysis = gradeRecord.homeworkAnalysis && gradeRecord.homeworkAnalysis.trim() !== '' 
+                    ? gradeRecord.homeworkAnalysis 
+                    : 'Henüz değerlendirme eklenmedi.';
+                const fileName = gradeRecord.fileName || '';
+                const fileUrl = gradeRecord.fileUrl || '';
                 const hasFile = Boolean(fileName || fileUrl);
 
-                if (mScore > 0) {
+                if (mScore !== null) {
                     midtermSum += mScore;
                     countedMidterms++;
                 }
-                if (fScore > 0) {
+                if (fScore !== null) {
                     finalSum += fScore;
                     countedFinals++;
                 }
@@ -1399,21 +1417,21 @@ class AppState {
                         <!-- Dönem Ortası -->
                         <td class="py-3 px-4 text-center">
                             <span class="px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/20 font-mono font-bold">
-                                ${mScore > 0 ? `${mScore} / 100` : '-'}
+                                ${displayMidterm}
                             </span>
                         </td>
 
                         <!-- Sene Sonu -->
                         <td class="py-3 px-4 text-center">
                             <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono font-bold">
-                                ${fScore > 0 ? `${fScore} / 100` : '-'}
+                                ${displayFinal}
                             </span>
                         </td>
 
                         <!-- Ödev Analizi & Yorum -->
                         <td class="py-3 px-4 text-slate-300 max-w-xs">
                             <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-300 leading-relaxed text-[11px]">
-                                ${comment}
+                                ${displayAnalysis}
                             </div>
                         </td>
 
@@ -1449,8 +1467,8 @@ class AppState {
                 `;
             }).join('');
 
-            const avgMidterm = countedMidterms > 0 ? Math.round(midtermSum / 4) : '-';
-            const avgFinal = countedFinals > 0 ? Math.round(finalSum / 4) : '-';
+            const avgMidterm = countedMidterms > 0 ? `${Math.round(midtermSum / countedMidterms)} / 100` : '-';
+            const avgFinal = countedFinals > 0 ? `${Math.round(finalSum / countedFinals)} / 100` : '-';
 
             return `
                 <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
@@ -1624,38 +1642,52 @@ class AppState {
         reader.readAsDataURL(file);
     }
 
-    async saveSkillGradeModal(studentId, skill, formData) {
-        const student = (this.data.students || []).find(s => s.id === studentId);
-        const studentName = student ? student.name : 'Öğrenci';
-        const currentClassId = this.currentClassId || (student && student.classId) || this.selectedClassId;
+    async saveSkillGradeModal(studentId, skill, formData = {}) {
+        const targetStudentId = studentId || document.getElementById('modalExamStudentId')?.value;
+        const skillKey = skill || document.getElementById('modalExamSkill')?.value || 'Reading';
+        const student = (this.data.students || []).find(s => String(s.id) === String(targetStudentId));
+        const targetStudentName = student ? student.name : 'Öğrenci';
+        const currentClassId = this.currentClassId || (this.currentClass && this.currentClass.id) || (student && student.classId) || this.selectedClassId;
         const currentUser = this.data.currentUser || {};
 
+        // Extract input values from formData or directly from modal DOM elements
+        const midtermRaw = formData.midtermScore !== undefined ? formData.midtermScore : (document.getElementById('modalMidtermScore')?.value || document.getElementById('modalExamMidterm')?.value);
+        const finalRaw = formData.finalScore !== undefined ? formData.finalScore : (document.getElementById('modalFinalScore')?.value || document.getElementById('modalExamFinal')?.value);
+        const analysisRaw = formData.homeworkAnalysis !== undefined ? formData.homeworkAnalysis : (document.getElementById('modalHomeworkAnalysis')?.value || document.getElementById('modalExamHwAnalysis')?.value);
+        const fileUrlRaw = formData.fileUrl !== undefined ? formData.fileUrl : (document.getElementById('modalGradeFileUrl')?.value || this.pendingExamFileData || '');
+        const fileNameRaw = formData.fileName !== undefined ? formData.fileName : (this.pendingExamFileName || '');
+
         const payload = {
-            id: `grade_${studentId}_${skill}`,
+            id: `grade_${targetStudentId}_${skillKey}`,
             classId: currentClassId,
-            studentId: studentId,
-            studentName: studentName,
-            skill: skill,
-            midtermScore: Number(formData.midtermScore) || 0,
-            finalScore: Number(formData.finalScore) || 0,
-            homeworkAnalysis: formData.homeworkAnalysis || '',
-            fileUrl: formData.fileUrl || '',
-            fileName: formData.fileName || '',
+            studentId: String(targetStudentId),
+            studentName: targetStudentName,
+            skill: skillKey,
+            midtermScore: midtermRaw !== '' && midtermRaw !== null && midtermRaw !== undefined ? Number(midtermRaw) : null,
+            finalScore: finalRaw !== '' && finalRaw !== null && finalRaw !== undefined ? Number(finalRaw) : null,
+            homeworkAnalysis: analysisRaw ? String(analysisRaw).trim() : '',
+            fileUrl: fileUrlRaw ? String(fileUrlRaw).trim() : '',
+            fileName: fileNameRaw ? String(fileNameRaw).trim() : '',
             teacherName: currentUser.name || currentUser.username || 'Öğretmen',
             teacherId: String(currentUser.id || ''),
             updatedAt: new Date().toISOString()
         };
 
+        console.log("Supabase exam_grades upserting payload:", payload);
+
         if (supabaseClient) {
-            const { error } = await supabaseClient.from('exam_grades').upsert([payload]);
+            const { data, error } = await supabaseClient
+                .from('exam_grades')
+                .upsert([payload]);
+
             if (error) {
-                console.error("Buluta kaydedilemedi:", error);
-                this.showToast("Buluta kaydedilemedi: " + error.message, "error");
+                console.error("Supabase not kayıt hatası:", error);
+                alert("Not kaydedilemedi: " + error.message);
                 return;
             }
         }
 
-        this.showToast(`${studentName} — ${skill} notu ve analizi başarıyla kaydedildi.`, "success");
+        this.showToast(`${targetStudentName} — ${skillKey} notu ve analizi başarıyla kaydedildi.`, "success");
         this.closeExamModal();
         await this.renderGradesTab();
     }
@@ -1667,19 +1699,10 @@ class AppState {
 
     async handleSaveExam(e) {
         if (e) e.preventDefault();
-        const studentId = document.getElementById('modalExamStudentId').value;
+        const studentId = document.getElementById('modalExamStudentId')?.value;
         const skill = document.getElementById('modalExamSkill')?.value || 'Reading';
-        const midtermVal = document.getElementById('modalExamMidterm').value;
-        const finalVal = document.getElementById('modalExamFinal').value;
-        const analysis = document.getElementById('modalExamHwAnalysis').value.trim();
-
-        await this.saveSkillGradeModal(studentId, skill, {
-            midtermScore: midtermVal !== '' ? Number(midtermVal) : 0,
-            finalScore: finalVal !== '' ? Number(finalVal) : 0,
-            homeworkAnalysis: analysis,
-            fileUrl: this.pendingExamFileData || '',
-            fileName: this.pendingExamFileName || ''
-        });
+        
+        await this.saveSkillGradeModal(studentId, skill, {});
     }
 
     downloadStudentExamFile(studentId, skill) {
