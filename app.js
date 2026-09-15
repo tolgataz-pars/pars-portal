@@ -1505,45 +1505,50 @@ class AppState {
 
         let uploadedFileUrl = existingFileUrl;
 
-        // Eğer bilgisayardan yeni bir dosya seçildiyse:
+        // 1. Bilgisayardan yeni dosya seçilmişse yükle
         if (fileInput && fileInput.files && fileInput.files[0]) {
             const file = fileInput.files[0];
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${classId}_${studentId}_${skillKey}_${Date.now()}.${fileExt}`;
-            const filePath = `exam_submissions/${fileName}`;
+            // Türkçe karakter ve boşlukları dosya adından temizle
+            const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const filePath = `exam_submissions/${classId}_${studentId}_${Date.now()}_${cleanFileName}`;
 
-            // Kaydedilirken butonu bilgilendirme moduna al
+            console.log("Dosya yükleniyor:", filePath);
+
             const saveBtn = event?.target || (event && event.currentTarget);
             const originalText = saveBtn ? saveBtn.innerText : 'Kaydet';
             if (saveBtn) saveBtn.innerText = "Yükleniyor...";
 
             try {
-                let { data: uploadData, error: uploadError } = await supabaseClient
+                const { data: uploadData, error: uploadError } = await supabaseClient
                     .storage
                     .from('materials')
-                    .upload(filePath, file, { upsert: true });
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: true
+                    });
 
                 if (uploadError) {
-                    console.warn("Storage upload uyarısı 'materials', fallback deneniyor:", uploadError);
-                    const fallbackRes = await supabaseClient
-                        .storage
-                        .from('exam-files')
-                        .upload(filePath, file, { upsert: true });
-                    if (!fallbackRes.error) {
-                        const { data: urlData } = supabaseClient.storage.from('exam-files').getPublicUrl(filePath);
-                        uploadedFileUrl = urlData?.publicUrl || uploadedFileUrl;
-                    }
-                } else {
-                    const { data: urlData } = supabaseClient.storage.from('materials').getPublicUrl(filePath);
-                    uploadedFileUrl = urlData?.publicUrl || uploadedFileUrl;
+                    console.error("Storage yükleme hatası:", uploadError);
+                    alert("Dosya yüklenemedi: " + (uploadError.message || "Supabase Storage bucket izni hatası."));
+                    if (saveBtn) saveBtn.innerText = originalText;
+                    return;
                 }
+
+                // Public indirme URL'sini al
+                const { data: urlData } = supabaseClient.storage.from('materials').getPublicUrl(filePath);
+                uploadedFileUrl = urlData?.publicUrl || '';
+                console.log("Yüklenen dosya URL:", uploadedFileUrl);
             } catch (err) {
-                console.error("Storage upload hatası:", err);
+                console.error("Storage yükleme istisnası:", err);
+                alert("Dosya yükleme hatası: " + err.message);
+                if (saveBtn) saveBtn.innerText = originalText;
+                return;
             } finally {
                 if (saveBtn) saveBtn.innerText = originalText;
             }
         }
 
+        // 2. Veritabanı kaydı
         const payload = {
             id: `grade_${studentId}_${skillKey}`,
             classId: String(classId),
@@ -1559,13 +1564,13 @@ class AppState {
             updatedAt: new Date().toISOString()
         };
 
-        const { error } = await supabaseClient.from('exam_grades').upsert([payload]);
-        if (error) {
-            alert("Kayıt hatası: " + error.message);
+        const { error: dbError } = await supabaseClient.from('exam_grades').upsert([payload]);
+        if (dbError) {
+            alert("Not kayıt hatası: " + dbError.message);
             return;
         }
 
-        if (this.showToast) this.showToast(`${studentName} — ${skillKey} notu kaydedildi.`, "success");
+        if (this.showToast) this.showToast(`${studentName} — ${skillKey} notu başarıyla kaydedildi.`, "success");
         await this.renderGradesTab();
     }
 
