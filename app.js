@@ -696,33 +696,31 @@ class AppState {
     // EKRAN 1: LANDING SCREEN RENDER
     // -------------------------------------------------------------
     renderLandingScreen() {
-        // Sınıfları şube ve isim bazında tekilleştir:
+        const studentsList = this.data?.students || [];
+        const uniqueStudents = new Set(studentsList.map(s => s.id || s.name)).size;
         const uniqueClasses = Array.from(
           new Map(
-            (this.data.classes || []).map(c => [
+            (this.data?.classes || []).map(c => [
               `${(c.branchId || c.branch || '').toLowerCase().trim()}_${(c.name || '').toLowerCase().trim()}`,
               c
             ])
           ).values()
         );
-
-        // Öğrencileri isim ve sınıf adı/id bazında tekilleştir:
-        const uniqueStudentCount = new Set((this.data.students || []).map(s => s.id).filter(Boolean)).size || (this.data.students || []).length;
-
-        const totalClasses = uniqueClasses.length;
+        const totalClasses = uniqueClasses.length || (this.data?.classes || []).length;
+        const totalBranches = (this.data?.branches || []).length || 2;
 
         const landingTotalClassesEl = document.getElementById('landingTotalClasses');
         if (landingTotalClassesEl) landingTotalClassesEl.textContent = `${totalClasses} Eğitim Sınıfı`;
 
         const landingTotalStudentsEl = document.getElementById('landingTotalStudents');
-        if (landingTotalStudentsEl) landingTotalStudentsEl.textContent = `${uniqueStudentCount} Kayıtlı Öğrenci`;
+        if (landingTotalStudentsEl) landingTotalStudentsEl.textContent = `${uniqueStudents} Kayıtlı Öğrenci`;
 
         const container = document.getElementById('branchCardsContainer');
         if (container && this.data.branches) {
           container.innerHTML = this.data.branches.map(branch => {
             const branchClasses = uniqueClasses.filter(c => (c.branchId === branch.id || c.branch === branch.id));
             const branchClassIds = branchClasses.map(c => c.id);
-            const branchStudentCount = uniqueStudents.filter(s => branchClassIds.includes(s.classId)).length;
+            const branchStudentCount = studentsList.filter(s => branchClassIds.includes(s.classId)).length;
             const hasPermission = this.hasBranchPermission(branch.id);
             const isLoggedIn = !!this.data.currentUser;
 
@@ -1706,10 +1704,10 @@ class AppState {
     }
 
     async saveSkillGradeModal() {
-        if (!this.currentEditingGrade || !this.currentEditingGrade.studentId) {
+        if (!this.currentEditingGrade) {
             const sId = document.getElementById('modalExamStudentId')?.value;
             const sk = document.getElementById('modalExamSkill')?.value || 'Reading';
-            const student = (this.data.students || []).find(s => String(s.id) === String(sId));
+            const student = (this.data?.students || []).find(s => String(s.id) === String(sId));
             const currentClassId = this.currentClassId || (this.currentClass && this.currentClass.id) || (student && student.classId) || this.selectedClassId;
 
             if (student) {
@@ -1720,57 +1718,51 @@ class AppState {
                     classId: currentClassId
                 };
             } else {
-                console.error("No current editing grade or student found.");
+                console.error("currentEditingGrade bulunamadı");
                 return;
             }
         }
 
-        const studentId = this.currentEditingGrade.studentId;
-        const studentName = this.currentEditingGrade.studentName;
-        const skillKey = this.currentEditingGrade.skill;
-        const classId = this.currentEditingGrade.classId;
+        const midInput = document.getElementById('modalMidtermScore') || document.getElementById('modalExamMidterm');
+        const finInput = document.getElementById('modalFinalScore') || document.getElementById('modalExamFinal');
+        const anaInput = document.getElementById('modalHomeworkAnalysis') || document.getElementById('modalExamHwAnalysis');
+        const fileInput = document.getElementById('modalGradeFileUrl');
 
-        const midtermRaw = (document.getElementById('modalMidtermScore')?.value || document.getElementById('modalExamMidterm')?.value || '').trim();
-        const finalRaw = (document.getElementById('modalFinalScore')?.value || document.getElementById('modalExamFinal')?.value || '').trim();
-        const analysisVal = (document.getElementById('modalHomeworkAnalysis')?.value || document.getElementById('modalExamHwAnalysis')?.value || '').trim();
-        const fileUrlVal = (this.pendingExamFileData || document.getElementById('modalGradeFileUrl')?.value || '').trim();
+        const midtermVal = midInput && midInput.value.trim() !== '' ? Number(midInput.value) : null;
+        const finalVal = finInput && finInput.value.trim() !== '' ? Number(finInput.value) : null;
+        const analysisVal = anaInput ? anaInput.value.trim() : '';
+        const fileUrlVal = (fileInput ? fileInput.value.trim() : '') || (this.pendingExamFileData || '');
         const fileNameVal = (this.pendingExamFileName || '').trim();
 
-        const currentUser = this.data.currentUser || {};
-
         const payload = {
-            id: `grade_${studentId}_${skillKey}`,
-            classId: classId,
-            studentId: String(studentId),
-            studentName: studentName,
-            skill: skillKey,
-            midtermScore: midtermRaw !== '' ? Number(midtermRaw) : null,
-            finalScore: finalRaw !== '' ? Number(finalRaw) : null,
+            id: `grade_${this.currentEditingGrade.studentId}_${this.currentEditingGrade.skill}`,
+            classId: this.currentEditingGrade.classId,
+            studentId: String(this.currentEditingGrade.studentId),
+            studentName: this.currentEditingGrade.studentName,
+            skill: this.currentEditingGrade.skill,
+            midtermScore: midtermVal,
+            finalScore: finalVal,
             homeworkAnalysis: analysisVal,
             fileUrl: fileUrlVal,
             fileName: fileNameVal,
-            teacherName: currentUser.name || currentUser.username || 'Öğretmen',
-            teacherId: String(currentUser.id || ''),
+            teacherName: this.data.currentUser?.name || 'Öğretmen',
+            teacherId: String(this.data.currentUser?.id || ''),
             updatedAt: new Date().toISOString()
         };
 
-        console.log("Supabase exam_grades direct upserting payload:", payload);
-
-        // 1. Direct write to Supabase (bypassing LocalStorage)
         if (supabaseClient) {
-            const { data, error } = await supabaseClient
-                .from('exam_grades')
-                .upsert([payload]);
-
+            const { error } = await supabaseClient.from('exam_grades').upsert([payload]);
             if (error) {
-                console.error("Supabase not kayıt hatası:", error);
-                alert("Not kaydedilemedi: " + error.message);
+                alert("Kayıt hatası: " + error.message);
                 return;
             }
         }
 
-        this.showToast(`${studentName} — ${skillKey} notu ve analizi başarıyla kaydedildi.`, "success");
-        this.closeExamModal();
+        // Modalı kapat
+        const modal = document.getElementById('gradeModal') || document.getElementById('examModal') || document.getElementById('examGradeModal');
+        if (modal) modal.classList.add('hidden');
+
+        this.showToast(`${this.currentEditingGrade.studentName} — ${this.currentEditingGrade.skill} notu ve analizi başarıyla kaydedildi.`, "success");
         await this.renderGradesTab();
     }
 
