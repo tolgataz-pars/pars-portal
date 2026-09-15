@@ -1046,12 +1046,47 @@
                 </div>
             </form>
         </div>
+    <!-- MODAL 7: 4 BECERİ DEĞERLENDİRME MODALI -->
+    <div id="gradeSkillModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+      <div class="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 relative">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+          <div>
+            <h3 id="skillModalTitle" class="text-base font-bold text-white">Beceri Notu Düzenle</h3>
+            <p id="skillModalSubtitle" class="text-xs text-slate-400 mt-0.5">Öğrenci ve beceri değerlendirmesi</p>
+          </div>
+          <button onclick="appState.closeGradeModal()" class="text-slate-400 hover:text-white text-xl">✕</button>
+        </div>
+        <form id="skillGradeForm" onsubmit="event.preventDefault(); appState.saveSkillGradeModal();" class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Dönem Ortası (0-100)</label>
+              <input type="number" id="modalMidtermScore" min="0" max="100" placeholder="Örn: 85" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-teal-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Sene Sonu (0-100)</label>
+              <input type="number" id="modalFinalScore" min="0" max="100" placeholder="Örn: 90" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-teal-500 focus:outline-none">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Ödev Analizi & Öğretmen Yorumu (Max 300 Karakter)</label>
+            <textarea id="modalHomeworkAnalysis" maxlength="300" rows="3" placeholder="Öğrencinin bu becerideki gelişimi..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm focus:border-teal-500 focus:outline-none resize-none"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Öğrenciye Özel Dosya / Materyal Linki</label>
+            <input type="url" id="modalGradeFileUrl" placeholder="https://..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-sm focus:border-teal-500 focus:outline-none">
+          </div>
+          <div class="flex justify-end gap-3 pt-2">
+            <button type="button" onclick="appState.closeGradeModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-semibold">İptal</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold">Kaydet</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <!-- TOAST CONTAINER FOR NOTIFICATIONS -->
     <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
 
     <!-- App Logic JS -->
-    <script src="app.js?v=2.1"></script>
+    <script src="app.js?v=2.5"></script>
 </body>
 </html>

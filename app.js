@@ -1565,6 +1565,12 @@ class AppState {
         return this.renderGradesTab();
     }
 
+    closeGradeModal() {
+        const modal = document.getElementById('gradeSkillModal') || document.getElementById('gradeModal') || document.getElementById('examGradeModal') || document.getElementById('examModal');
+        if (modal) modal.classList.add('hidden');
+        this.currentEditingGrade = null;
+    }
+
     openSkillGradeModal(studentId, skillKey = 'Reading') {
         if (this.isStudent()) {
             this.showToast("Öğrenciler not ve analiz değiştiremez!", "warning");
@@ -1601,8 +1607,13 @@ class AppState {
         };
         this.activeModalData = this.currentEditingGrade;
 
-        console.log("Opening skill grade modal for real student:", this.currentEditingGrade);
+        // Başlıkları doldur
+        const titleEl = document.getElementById('skillModalTitle');
+        const subEl = document.getElementById('skillModalSubtitle');
+        if (titleEl) titleEl.innerText = `${student ? student.name : 'Öğrenci'} - ${skillKey} Notu`;
+        if (subEl) subEl.innerText = `Sınıf: ${this.currentClass?.name || currentClassId}`;
 
+        // Varsa mevcut notu inputlara bas
         const gradesList = this.classGrades || this.data.dbGrades || [];
         const existing = gradesList.find(g => 
             String(g.studentId) === String(studentId) && 
@@ -1610,35 +1621,17 @@ class AppState {
             g.skill.toLowerCase() === skillKey.toLowerCase()
         ) || (this.data.skillsGradesMap && (this.data.skillsGradesMap.get(`grade_${studentId}_${skillKey}`) || this.data.skillsGradesMap.get(`grade_${studentId}_${skillKey.toLowerCase()}`)));
 
-        this.pendingExamFileData = existing ? (existing.fileUrl || null) : null;
-        this.pendingExamFileName = existing ? (existing.fileName || null) : null;
-        this.pendingExamFileSize = null;
+        const midEl = document.getElementById('modalMidtermScore');
+        const finEl = document.getElementById('modalFinalScore');
+        const anaEl = document.getElementById('modalHomeworkAnalysis');
+        const urlEl = document.getElementById('modalGradeFileUrl');
 
-        if (document.getElementById('modalExamStudentId')) document.getElementById('modalExamStudentId').value = studentId;
-        if (document.getElementById('modalExamSkill')) document.getElementById('modalExamSkill').value = skillKey;
-        if (document.getElementById('modalExamStudentName')) document.getElementById('modalExamStudentName').value = `${this.currentEditingGrade.studentName} — ${skillKey}`;
-        if (document.getElementById('examModalTitle')) {
-            document.getElementById('examModalTitle').innerHTML = `<i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i><span>${this.currentEditingGrade.studentName} — ${skillKey} Notu & Analizi</span>`;
-        }
+        if (midEl) midEl.value = existing?.midtermScore ?? '';
+        if (finEl) finEl.value = existing?.finalScore ?? '';
+        if (anaEl) anaEl.value = existing?.homeworkAnalysis || '';
+        if (urlEl) urlEl.value = existing?.fileUrl || '';
 
-        const midInput = document.getElementById('modalMidtermScore') || document.getElementById('modalExamMidterm');
-        const finInput = document.getElementById('modalFinalScore') || document.getElementById('modalExamFinal');
-        const anaInput = document.getElementById('modalHomeworkAnalysis') || document.getElementById('modalExamAnalysis') || document.getElementById('modalExamHwAnalysis');
-        const fileInput = document.getElementById('modalGradeFileUrl');
-
-        if (midInput) midInput.value = (existing?.midtermScore !== null && existing?.midtermScore !== undefined) ? existing.midtermScore : '';
-        if (finInput) finInput.value = (existing?.finalScore !== null && existing?.finalScore !== undefined) ? existing.finalScore : '';
-        if (anaInput) anaInput.value = existing?.homeworkAnalysis || '';
-        if (fileInput) fileInput.value = existing?.fileUrl || '';
-
-        const fileNameDisplay = (existing && existing.fileName) ? `Yüklü: ${existing.fileName}` : 'Henüz dosya yüklenmedi';
-        if (document.getElementById('modalExamFileNameDisplay')) {
-            document.getElementById('modalExamFileNameDisplay').textContent = fileNameDisplay;
-        }
-
-        this.updateCharCounter();
-
-        const modal = document.getElementById('gradeModal') || document.getElementById('examGradeModal') || document.getElementById('examModal');
+        const modal = document.getElementById('gradeSkillModal') || document.getElementById('gradeModal') || document.getElementById('examGradeModal') || document.getElementById('examModal');
         if (modal) modal.classList.remove('hidden');
         if (window.lucide) window.lucide.createIcons();
     }
@@ -1648,29 +1641,7 @@ class AppState {
     }
 
     closeExamModal() {
-        this.currentEditingGrade = null;
-        this.activeModalData = null;
-        this.pendingExamFileData = null;
-        this.pendingExamFileName = null;
-        this.pendingExamFileSize = null;
-
-        if (document.getElementById('modalExamMidterm')) document.getElementById('modalExamMidterm').value = '';
-        if (document.getElementById('modalMidtermScore')) document.getElementById('modalMidtermScore').value = '';
-
-        if (document.getElementById('modalExamFinal')) document.getElementById('modalExamFinal').value = '';
-        if (document.getElementById('modalFinalScore')) document.getElementById('modalFinalScore').value = '';
-
-        if (document.getElementById('modalExamHwAnalysis')) document.getElementById('modalExamHwAnalysis').value = '';
-        if (document.getElementById('modalHomeworkAnalysis')) document.getElementById('modalHomeworkAnalysis').value = '';
-
-        if (document.getElementById('modalGradeFileUrl')) document.getElementById('modalGradeFileUrl').value = '';
-
-        if (document.getElementById('modalExamFileNameDisplay')) {
-            document.getElementById('modalExamFileNameDisplay').textContent = 'Henüz dosya yüklenmedi';
-        }
-
-        const modal = document.getElementById('gradeModal') || document.getElementById('examGradeModal') || document.getElementById('examModal');
-        if (modal) modal.classList.add('hidden');
+        return this.closeGradeModal();
     }
 
     updateCharCounter() {
@@ -1707,21 +1678,12 @@ class AppState {
     }
 
     async saveSkillGradeModal() {
-        if (!this.currentEditingGrade || !this.currentEditingGrade.studentId) {
-            alert("Lütfen düzenlemek istediğiniz öğrenciyi tekrar seçin.");
-            return;
-        }
+        if (!this.currentEditingGrade) return;
 
-        const midInput = document.getElementById('modalMidtermScore') || document.getElementById('modalExamMidterm');
-        const finInput = document.getElementById('modalFinalScore') || document.getElementById('modalExamFinal');
-        const anaInput = document.getElementById('modalHomeworkAnalysis') || document.getElementById('modalExamAnalysis') || document.getElementById('modalExamHwAnalysis');
-        const fileInput = document.getElementById('modalGradeFileUrl');
-
-        const midVal = midInput ? midInput.value.trim() : '';
-        const finVal = finInput ? finInput.value.trim() : '';
-        const anaVal = anaInput ? anaInput.value.trim() : '';
-        const fileVal = fileInput ? fileInput.value.trim() : (this.pendingExamFileData || '');
-        const fileNameVal = (this.pendingExamFileName || '').trim();
+        const midVal = document.getElementById('modalMidtermScore')?.value.trim();
+        const finVal = document.getElementById('modalFinalScore')?.value.trim();
+        const anaVal = document.getElementById('modalHomeworkAnalysis')?.value.trim() || '';
+        const fileVal = document.getElementById('modalGradeFileUrl')?.value.trim() || '';
 
         const payload = {
             id: `grade_${this.currentEditingGrade.studentId}_${this.currentEditingGrade.skill}`,
@@ -1733,7 +1695,6 @@ class AppState {
             finalScore: finVal !== '' ? Number(finVal) : null,
             homeworkAnalysis: anaVal,
             fileUrl: fileVal,
-            fileName: fileNameVal,
             teacherName: this.data.currentUser?.name || 'Elif Sanağ',
             teacherId: String(this.data.currentUser?.id || 'teacher-elif'),
             updatedAt: new Date().toISOString()
@@ -1741,14 +1702,12 @@ class AppState {
 
         const { error } = await supabaseClient.from('exam_grades').upsert([payload]);
         if (error) {
-            alert("Supabase Güncelleme Hatası: " + error.message);
+            alert("Supabase Hatası: " + error.message);
             return;
         }
 
-        const modal = document.getElementById('gradeModal') || document.getElementById('examGradeModal') || document.getElementById('examModal');
-        if (modal) modal.classList.add('hidden');
-
-        if (this.showToast) this.showToast("Not ve analiz başarıyla kaydedildi.", "success");
+        this.closeGradeModal();
+        if (this.showToast) this.showToast(`${this.currentEditingGrade.studentName} — ${this.currentEditingGrade.skill} notu ve analizi kaydedildi.`, "success");
         await this.renderGradesTab();
     }
 
