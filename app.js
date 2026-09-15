@@ -1078,11 +1078,84 @@ class AppState {
     }
 
     // -------------------------------------------------------------
+    // SUPABASE YOKLAMA (ATTENDANCE) SENKRONİZASYONU
+    // -------------------------------------------------------------
+    async saveAttendanceToSupabase(classId, date) {
+        if (!supabaseClient) return;
+        const currentClassId = classId || this.selectedClassId;
+        const selectedDate = date || this.selectedDate;
+        if (!currentClassId || !selectedDate) return;
+
+        const classStudents = this.data.students.filter(s => s.classId === currentClassId);
+        const classAttendanceRecords = classStudents.map(s => ({
+            studentId: s.id,
+            studentName: s.name,
+            attendance: s.attendance || 'Geldi',
+            date: selectedDate
+        }));
+
+        const attendancePayload = {
+            id: `${currentClassId}_${selectedDate}`,
+            classId: currentClassId,
+            date: selectedDate,
+            records: classAttendanceRecords,
+            updatedAt: new Date().toISOString()
+        };
+
+        try {
+            const { error } = await supabaseClient
+                .from('attendance')
+                .upsert([attendancePayload]);
+            if (error) {
+                console.error("Supabase attendance save error:", error);
+            } else {
+                console.log(`⚡ ${selectedDate} tarihli yoklama Supabase 'attendance' tablosuna kaydedildi.`);
+            }
+        } catch (err) {
+            console.error("Supabase attendance save catch error:", err);
+        }
+    }
+
+    async loadAttendanceFromSupabase(classId, date) {
+        if (!supabaseClient) return;
+        const currentClassId = classId || this.selectedClassId;
+        const currentDate = date || this.selectedDate;
+        if (!currentClassId || !currentDate) return;
+
+        try {
+            const { data: attendanceData, error } = await supabaseClient
+                .from('attendance')
+                .select('*')
+                .eq('classId', currentClassId)
+                .eq('date', currentDate)
+                .maybeSingle();
+
+            if (attendanceData && attendanceData.records && Array.isArray(attendanceData.records)) {
+                const recordMap = new Map(attendanceData.records.map(r => [r.studentId, r.attendance]));
+                this.data.students.forEach(s => {
+                    if (s.classId === currentClassId) {
+                        if (recordMap.has(s.id)) {
+                            s.attendance = recordMap.get(s.id);
+                            s.date = currentDate;
+                        }
+                    }
+                });
+                this.saveData();
+            }
+        } catch (err) {
+            console.error("Supabase attendance fetch error:", err);
+        }
+    }
+
+    // -------------------------------------------------------------
     // EKRAN 3: SINIF DETAY VE TABLI YÖNETİM EKRANI
     // -------------------------------------------------------------
-    renderClassDetailScreen() {
+    async renderClassDetailScreen() {
         const currentClass = this.data.classes.find(c => c.id === this.selectedClassId);
         if (!currentClass) return;
+
+        // Load attendance for current class and selected date from Supabase
+        await this.loadAttendanceFromSupabase(this.selectedClassId, this.selectedDate);
 
         const addStudentBtn = document.getElementById('addStudentBtn');
         if (addStudentBtn) {
@@ -1819,8 +1892,9 @@ class AppState {
         this.showToast(`📁 ${item.fileName} indirmesi başlatıldı.`, "success");
     }
 
-    changeSelectedDate(newDate) {
+    async changeSelectedDate(newDate) {
         this.selectedDate = newDate;
+        await this.loadAttendanceFromSupabase(this.selectedClassId, newDate);
         this.filterStudents();
     }
 
@@ -1944,7 +2018,7 @@ class AppState {
         if (window.lucide) window.lucide.createIcons();
     }
 
-    toggleAttendance(studentId) {
+    async toggleAttendance(studentId) {
         if (this.isStudent()) {
             this.showToast("Öğrenci hesapları yoklama durumunu değiştiremez! (Salt Okunur Mod)", "warning");
             return;
@@ -1953,15 +2027,19 @@ class AppState {
         if (!student) return;
 
         student.attendance = student.attendance === 'Geldi' ? 'Gelmedi' : 'Geldi';
+        student.date = this.selectedDate;
         this.saveData();
-        if (supabaseClient) supabaseClient.from('students').upsert(student);
+
+        await this.saveAttendanceToSupabase(this.selectedClassId, this.selectedDate);
+        if (supabaseClient) await supabaseClient.from('students').upsert(student);
+
         this.filterStudents();
 
         const toastType = student.attendance === 'Geldi' ? 'success' : 'warning';
         this.showToast(`${student.name}: Yoklama '${student.attendance}' olarak güncellendi.`, toastType);
     }
 
-    updateStudentSkill(studentId, newSkill) {
+    async updateStudentSkill(studentId, newSkill) {
         if (this.isStudent()) {
             this.showToast("Öğrenci hesapları ders becerisini değiştiremez! (Salt Okunur Mod)", "warning");
             return;
@@ -1971,12 +2049,12 @@ class AppState {
 
         student.skill = newSkill;
         this.saveData();
-        if (supabaseClient) supabaseClient.from('students').upsert(student);
+        if (supabaseClient) await supabaseClient.from('students').upsert(student);
         this.filterStudents();
         this.showToast(`${student.name} becerisi '${newSkill}' yapıldı.`, "info");
     }
 
-    updateStudentDate(studentId, newDate) {
+    async updateStudentDate(studentId, newDate) {
         if (this.isStudent()) {
             this.showToast("Öğrenci hesapları yoklama tarihini değiştiremez! (Salt Okunur Mod)", "warning");
             return;
@@ -1986,12 +2064,15 @@ class AppState {
 
         student.date = newDate;
         this.saveData();
-        if (supabaseClient) supabaseClient.from('students').upsert(student);
+
+        await this.saveAttendanceToSupabase(this.selectedClassId, newDate);
+        if (supabaseClient) await supabaseClient.from('students').upsert(student);
+
         this.filterStudents();
         this.showToast(`${student.name} yoklama tarihi güncellendi.`, "info");
     }
 
-    setAllAttendance(status) {
+    async setAllAttendance(status) {
         if (this.isStudent()) {
             this.showToast("Öğrenci hesapları toplu yoklama işlemi yapamaz!", "warning");
             return;
@@ -2004,13 +2085,17 @@ class AppState {
         this.data.students.forEach(s => {
             if (s.classId === currentClass.id) {
                 s.attendance = status;
+                s.date = this.selectedDate;
                 updatedStudents.push(s);
                 count++;
             }
         });
 
         this.saveData();
-        if (supabaseClient && updatedStudents.length > 0) supabaseClient.from('students').upsert(updatedStudents);
+
+        await this.saveAttendanceToSupabase(currentClass.id, this.selectedDate);
+        if (supabaseClient && updatedStudents.length > 0) await supabaseClient.from('students').upsert(updatedStudents);
+
         this.filterStudents();
         this.showToast(`Sınıftaki ${count} öğrenci '${status}' işaretlendi.`, status === 'Geldi' ? 'success' : 'warning');
     }
@@ -2563,9 +2648,12 @@ class AppState {
     }
 
     // EXCEL EXPORT WITH SHEETJS & CUSTOM ADMIN SAVE PATH
-    exportExcel() {
+    async exportExcel() {
         const currentClass = this.data.classes.find(c => c.id === this.selectedClassId);
         if (!currentClass) return;
+
+        // Auto-save attendance for the current class and date to Supabase attendance table
+        await this.saveAttendanceToSupabase(currentClass.id, this.selectedDate);
 
         const branch = this.data.branches.find(b => b.id === currentClass.branchId);
         const classStudents = this.data.students.filter(s => s.classId === currentClass.id);
