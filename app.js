@@ -1472,7 +1472,14 @@ class AppState {
                                     <label class="block text-[11px] text-slate-400 mb-1">Bilgisayardan Dosya / Materyal Yükle (PDF, Ses, Görsel)</label>
                                     <div class="flex items-center gap-3">
                                         <input type="file" id="inp-file-${student.id}-${sk.key}" class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer bg-slate-950 border border-slate-700 rounded-lg p-1">
-                                        ${fileUrl ? `<a href="${fileUrl}" target="_blank" class="text-xs text-teal-400 hover:underline whitespace-nowrap flex items-center gap-1"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>Mevcut Dosya</a>` : ''}
+                                        <div id="file-actions-${student.id}-${sk.key}" class="flex items-center gap-2 whitespace-nowrap">
+                                            ${fileUrl ? `
+                                                <a href="${fileUrl}" target="_blank" class="text-xs text-teal-400 hover:underline">Mevcut Dosya</a>
+                                                <button type="button" onclick="appState.removeAttachedFile('${student.id}', '${sk.key}')" class="text-xs text-red-400 hover:text-red-300 font-semibold px-2 py-1 rounded bg-red-500/10 border border-red-500/20">
+                                                    ✕ Kaldır
+                                                </button>
+                                            ` : ''}
+                                        </div>
                                     </div>
                                     <input type="hidden" id="inp-existing-file-${student.id}-${sk.key}" value="${fileUrl || ''}">
                                 </div>
@@ -1527,6 +1534,18 @@ class AppState {
         if (el) el.classList.toggle('hidden');
     }
 
+    removeAttachedFile(studentId, skillKey) {
+        const hiddenInput = document.getElementById(`inp-existing-file-${studentId}-${skillKey}`);
+        const actionsDiv = document.getElementById(`file-actions-${studentId}-${skillKey}`);
+        const fileInput = document.getElementById(`inp-file-${studentId}-${skillKey}`);
+
+        if (hiddenInput) hiddenInput.value = '__DELETED__';
+        if (fileInput) fileInput.value = '';
+        if (actionsDiv) {
+            actionsDiv.innerHTML = `<span class="text-[11px] text-amber-400 italic">Dosya kaldırıldı (Kaydet'e basınız)</span>`;
+        }
+    }
+
     async saveInlineGrade(studentId, studentName, skillKey, classId, event) {
         const midInput = document.getElementById(`inp-mid-${studentId}-${skillKey}`);
         const finInput = document.getElementById(`inp-fin-${studentId}-${skillKey}`);
@@ -1538,7 +1557,7 @@ class AppState {
         const finVal = finInput && finInput.value.trim() !== '' ? Number(finInput.value) : null;
         const anaVal = anaInput ? anaInput.value.trim() : '';
 
-        let uploadedFileUrl = existingFileUrl;
+        let uploadedFileUrl = existingFileUrl === '__DELETED__' ? '' : existingFileUrl;
 
         // 1. Bilgisayardan yeni dosya seçilmişse yükle
         if (fileInput && fileInput.files && fileInput.files[0]) {
