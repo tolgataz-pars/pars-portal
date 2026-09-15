@@ -1164,6 +1164,8 @@ class AppState {
         const currentClass = this.data.classes.find(c => c.id === this.selectedClassId);
         if (!currentClass) return;
 
+        this.currentClassId = currentClass.id;
+
         const dateInput = document.getElementById('globalAttendanceDate');
         if (dateInput) {
             if (!this.selectedDate) this.selectedDate = new Date().toISOString().split('T')[0];
@@ -1514,37 +1516,63 @@ class AppState {
     // -------------------------------------------------------------
     // MÜFREDAT VE KONU PLANLAMASI LOGİC
     // -------------------------------------------------------------
-    renderCurriculumList(customItems) {
-        const grid = document.getElementById('curriculumListGrid');
-        if (!grid) return;
+    async renderCurriculumTab() {
+        const classId = this.currentClassId || this.selectedClassId;
+        const container = document.getElementById('curriculumListGrid') || document.getElementById('curriculumListContainer') || document.getElementById('curriculumList');
+        if (!container) return;
 
-        const currentClassId = this.selectedClassId;
-        const items = customItems || (this.data.curriculum || []).filter(c => c.classId === currentClassId);
+        let list = [];
+        if (supabaseClient && classId) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('curriculum')
+                    .select('*')
+                    .eq('classId', classId);
 
-        const user = this.data.currentUser;
-        const isAdmin = this.isAdmin();
+                if (!error && data) {
+                    list = data;
+                    const otherItems = (this.data.curriculum || []).filter(c => c.classId !== classId);
+                    this.data.curriculum = [...otherItems, ...data];
+                    this.saveData();
+                } else {
+                    list = (this.data.curriculum || []).filter(c => c.classId === classId);
+                }
+            } catch (err) {
+                console.error("Supabase curriculum fetch error:", err);
+                list = (this.data.curriculum || []).filter(c => c.classId === classId);
+            }
+        } else {
+            list = (this.data.curriculum || []).filter(c => c.classId === classId);
+        }
 
-        if (items.length === 0) {
-            grid.innerHTML = `
+        if (list.length === 0) {
+            container.innerHTML = `
                 <div class="col-span-full bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center text-slate-500 space-y-3">
-                    <i data-lucide="book-open" class="w-12 h-12 mx-auto text-slate-700"></i>
+                    <i data-lucide="book-open" class="w-12 h-12 mx-auto text-slate-700 opacity-40"></i>
                     <p class="text-white font-bold text-base">Henüz Müfredat Konusu Eklenmedi</p>
-                    <p class="text-xs text-slate-400">Bu sınıf için henüz işlenecek konu planı oluşturulmadı. Yukarıdaki butona tıklayarak yeni konu planı ekleyebilirsiniz.</p>
+                    <p class="text-xs text-slate-400 mt-1">Bu sınıf için henüz işlenecek konu planı oluşturulmadı. Yukarıdaki butona tıklayarak yeni konu planı ekleyebilirsiniz.</p>
                 </div>
             `;
             if (window.lucide) window.lucide.createIcons();
             return;
         }
 
-        grid.innerHTML = items.map(item => {
-            const isOwner = user && user.role === 'teacher' && user.name.toLowerCase().trim() === item.teacher.toLowerCase().trim();
-            const canEdit = isAdmin || isOwner;
+        const currentUser = this.data.currentUser;
+        const isAdmin = this.isAdmin();
+
+        container.innerHTML = list.map(item => {
+            const canEdit = currentUser && (
+                isAdmin ||
+                (item.authorId && String(currentUser.id) === String(item.authorId)) ||
+                (item.authorName && currentUser.name && item.authorName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
+                (item.teacher && currentUser.name && item.teacher.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+            );
 
             return `
                 <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4 relative group hover:border-indigo-500/50 transition-all">
                     <div class="flex items-start justify-between gap-3">
                         <span class="px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">
-                            ${item.level}
+                            ${item.level || 'Genel'}
                         </span>
 
                         <div class="flex items-center space-x-2">
@@ -1552,13 +1580,13 @@ class AppState {
                                 <button onclick="appState.openEditCurriculumModal('${item.id}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors" title="Düzenle">
                                     <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                                 </button>
-                                <button onclick="appState.deleteCurriculumItem('${item.id}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-400 transition-colors" title="Sil">
+                                <button onclick="appState.deleteCurriculum('${item.id}')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-300 hover:text-rose-400 transition-colors" title="Sil">
                                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                 </button>
                             ` : `
-                                <span class="px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-[10px] text-slate-400 font-medium flex items-center space-x-1" title="Sadece ${item.teacher} düzenleyebilir">
+                                <span class="px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-[10px] text-slate-400 font-medium flex items-center space-x-1" title="Sadece ${item.teacher || 'ilgili öğretmen'} düzenleyebilir">
                                     <i data-lucide="lock" class="w-3 h-3 text-amber-400"></i>
-                                    <span>${item.teacher}'a Ait</span>
+                                    <span>${item.teacher || 'Öğretmen'}'a Ait</span>
                                 </span>
                             `}
                         </div>
@@ -1566,22 +1594,22 @@ class AppState {
 
                     <div>
                         <h4 class="font-heading text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">
-                            ${item.topic}
+                            ${item.topic || item.title || 'Başlıksız Konu'}
                         </h4>
-                        <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                            ${item.description || 'Açıklama girilmedi.'}
+                        <p class="text-xs text-slate-400 mt-1.5 leading-relaxed whitespace-pre-line">
+                            ${item.description || item.content || 'Açıklama girilmedi.'}
                         </p>
                     </div>
 
                     <div class="pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
                         <div class="flex items-center space-x-2 text-indigo-300 font-semibold bg-indigo-950/40 px-3 py-1.5 rounded-xl border border-indigo-800/40">
                             <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
-                            <span>${item.startDate} &mdash; ${item.endDate}</span>
+                            <span>${item.startDate || ''} ${item.endDate ? '&mdash; ' + item.endDate : ''}</span>
                         </div>
 
                         <div class="flex items-center space-x-2 text-slate-300">
                             <i data-lucide="user-check" class="w-3.5 h-3.5 text-teal-400"></i>
-                            <span>Sorumlu: <strong class="text-white">${item.teacher}</strong></span>
+                            <span>Sorumlu: <strong class="text-white">${item.teacher || item.authorName || 'Öğretmen'}</strong></span>
                         </div>
                     </div>
                 </div>
@@ -1589,6 +1617,14 @@ class AppState {
         }).join('');
 
         if (window.lucide) window.lucide.createIcons();
+    }
+
+    renderCurriculumList(customItems) {
+        return this.renderCurriculumTab();
+    }
+
+    loadCurriculumFromSupabase(targetClassId) {
+        return this.renderCurriculumTab();
     }
 
     openAddCurriculumModal() {
@@ -1643,87 +1679,88 @@ class AppState {
         document.getElementById('curriculumModal').classList.add('hidden');
     }
 
+    async saveCurriculumModal(formData) {
+        const classId = this.currentClassId || this.selectedClassId;
+        const currentUser = this.data.currentUser;
+
+        const payload = {
+            id: 'curr-' + Date.now(),
+            classId: classId,
+            level: formData.level || 'Genel',
+            topic: formData.topic || formData.title,
+            description: formData.description || formData.content,
+            startDate: formData.startDate || '',
+            endDate: formData.endDate || '',
+            teacher: currentUser ? (currentUser.name || currentUser.username) : 'Öğretmen'
+        };
+
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('curriculum').upsert([payload]);
+            if (error) {
+                console.error('Müfredat kaydedilemedi:', error);
+                this.showToast('Hata: ' + error.message, 'error');
+                return;
+            }
+        }
+
+        await this.renderCurriculumTab();
+    }
+
     async handleSaveCurriculum(e) {
         e.preventDefault();
         const id = document.getElementById('modalCurrId').value;
-        const level = document.getElementById('modalCurrLevel')?.value || 'General';
+        const level = document.getElementById('modalCurrLevel')?.value || 'Genel';
         const topic = document.getElementById('modalCurrTopic').value.trim();
         const description = document.getElementById('modalCurrDescription').value.trim();
         const startDate = document.getElementById('modalCurrStartDate').value;
         const endDate = document.getElementById('modalCurrEndDate').value;
-        const teacher = document.getElementById('modalCurrTeacher').value || (this.data.currentUser ? this.data.currentUser.name : 'Öğretmen');
+        const currentUser = this.data.currentUser;
+        const teacher = document.getElementById('modalCurrTeacher')?.value || (currentUser ? (currentUser.name || currentUser.username) : 'Öğretmen');
 
-        let targetItem;
+        const classId = this.currentClassId || this.selectedClassId;
 
-        if (id) {
-            targetItem = (this.data.curriculum || []).find(c => c.id === id);
-            if (targetItem) {
-                targetItem.level = level;
-                targetItem.topic = topic;
-                targetItem.description = description;
-                targetItem.startDate = startDate;
-                targetItem.endDate = endDate;
-                targetItem.teacher = teacher;
-            }
-        } else {
-            targetItem = {
-                id: `curr-${Date.now()}`,
-                classId: this.selectedClassId,
-                level: level,
-                topic: topic,
-                description: description,
-                startDate: startDate,
-                endDate: endDate,
-                teacher: teacher
-            };
-            if (!this.data.curriculum) this.data.curriculum = [];
-            this.data.curriculum.push(targetItem);
-        }
+        const payload = {
+            id: id || ('curr-' + Date.now()),
+            classId: classId,
+            level: level || 'Genel',
+            topic: topic,
+            description: description,
+            startDate: startDate || '',
+            endDate: endDate || '',
+            teacher: teacher
+        };
 
-        this.saveData();
-
-        if (supabaseClient && targetItem) {
-            const { error } = await supabaseClient.from('curriculum').upsert([targetItem]);
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('curriculum').upsert([payload]);
             if (error) {
-                console.error("Supabase handleSaveCurriculum error:", error);
-                this.showToast("Müfredat kaydedilirken veritabanı hatası oluştu: " + error.message, "error");
-            } else {
-                this.showToast(id ? "Müfredat konusu güncellendi." : "Yeni müfredat konusu eklendi.", "success");
-                await this.loadCurriculumFromSupabase(this.selectedClassId);
+                console.error('Müfredat kaydedilemedi:', error);
+                this.showToast('Hata: ' + error.message, 'error');
+                return;
             }
-        } else {
-            this.showToast(id ? "Müfredat konusu güncellendi." : "Yeni müfredat konusu eklendi.", "success");
         }
 
+        this.showToast(id ? "Müfredat konusu güncellendi." : "Yeni müfredat konusu eklendi.", "success");
         this.closeCurriculumModal();
-        this.renderCurriculumList();
+        await this.renderCurriculumTab();
     }
 
-    async deleteCurriculumItem(currId) {
-        const item = (this.data.curriculum || []).find(c => c.id === currId);
-        if (!item) return;
-
-        const user = this.data.currentUser;
-        const isAdmin = this.isAdmin();
-        const isOwner = user && user.role === 'teacher' && user.name.toLowerCase().trim() === item.teacher.toLowerCase().trim();
-
-        if (!isAdmin && !isOwner) {
-            this.showToast("Bu müfredat konusunu silme yetkiniz bulunmamaktadır!", "error");
-            return;
-        }
-
-        if (confirm(`'${item.topic}' müfredat konusunu silmek istediğinizden emin misiniz?`)) {
-            if (supabaseClient) {
-                const { error } = await supabaseClient.from('curriculum').delete().eq('id', currId);
-                if (error) console.error("Supabase deleteCurriculumItem error:", error);
-                await this.loadCurriculumFromSupabase(this.selectedClassId);
-            } else {
-                this.data.curriculum = this.data.curriculum.filter(c => c.id !== currId);
-                this.saveData();
+    async deleteCurriculum(id) {
+        if (!confirm('Bu müfredat konusunu silmek istediğinize emin misiniz?')) return;
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('curriculum').delete().eq('id', id);
+            if (error) {
+                this.showToast('Silme hatası: ' + error.message, 'error');
+                return;
             }
-            this.showToast("Müfredat konusu silindi.", "info");
-            this.renderCurriculumList();
         }
+        this.data.curriculum = (this.data.curriculum || []).filter(c => c.id !== id);
+        this.saveData();
+        this.showToast('Müfredat konusu silindi.', 'info');
+        await this.renderCurriculumTab();
+    }
+
+    deleteCurriculumItem(id) {
+        return this.deleteCurriculum(id);
     }
 
     // -------------------------------------------------------------
