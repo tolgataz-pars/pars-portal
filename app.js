@@ -490,38 +490,40 @@ class AppState {
     // AUTHENTICATION & LOGIN LOGIC
     // -------------------------------------------------------------
     renderAuthHeader() {
-        const container = document.getElementById('authHeaderArea');
+        const userContainer = document.getElementById('authHeaderArea') || document.getElementById('headerUserArea') || document.getElementById('userProfileNav');
         const adminBtn = document.getElementById('adminTeacherMgmtBtn');
-        if (!container) return;
-
-        const user = this.data.currentUser;
+        const currentUser = this.data?.currentUser;
 
         // Admin Button visibility check (YALNIZCA ADMIN İÇİN)
-        if (user && user.role === 'admin') {
-            adminBtn.classList.remove('hidden');
-        } else {
-            adminBtn.classList.add('hidden');
+        if (adminBtn) {
+            if (currentUser && currentUser.role === 'admin') {
+                adminBtn.classList.remove('hidden');
+            } else {
+                adminBtn.classList.add('hidden');
+            }
         }
 
-        if (user) {
-            const currentTeacher = (this.data?.teachers || this.data?.users || []).find(t => t.id === this.data.currentUser?.id || t.username === this.data.currentUser?.username);
-            const userAvatar = currentTeacher?.avatar || this.data.currentUser?.avatar || 'assets/avatar.png';
+        if (!userContainer) return;
+
+        if (currentUser) {
+            const currentTeacher = (this.data?.teachers || this.data?.users || []).find(t => t.id === currentUser?.id || t.username === currentUser?.username);
+            const userAvatar = currentTeacher?.avatar || currentUser?.avatar || 'assets/avatar.png';
             
-            const rawAccess = (currentUser?.branchAccess || currentUser?.branchPermission || currentUser?.branch || currentUser?.skills || '').toString().toLowerCase();
+            const rawAccess = String(currentUser?.branchAccess || currentUser?.branchPermission || currentUser?.branch || currentUser?.skills || '').toLowerCase();
 
             let displayBadge = 'Öğretmen';
             if (rawAccess === 'all' || currentUser?.role === 'admin') {
               displayBadge = 'Tüm Şubeler Öğretmeni';
-            } else if (rawAccess === 'gaziemir') {
+            } else if (rawAccess.includes('gaziemir')) {
               displayBadge = 'Gaziemir Şubesi';
-            } else if (rawAccess === 'alsancak') {
+            } else if (rawAccess.includes('alsancak')) {
               displayBadge = 'Alsancak Şubesi';
             } else if (currentUser?.branchAccess) {
               displayBadge = currentUser.branchAccess;
             }
 
-            const isAdmin = user.role === 'admin';
-            const isStudent = user.role === 'student';
+            const isAdmin = currentUser.role === 'admin';
+            const isStudent = currentUser.role === 'student';
             const roleBadge = isAdmin ? 'Yönetici (Admin)' : isStudent ? '🎓 Öğrenci (Salt Okunur)' : displayBadge;
             const badgeColor = isAdmin ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
                                isStudent ? 'bg-sky-500/10 text-sky-300 border-sky-500/30' :
@@ -529,12 +531,12 @@ class AppState {
             const avatarBorder = isAdmin ? 'border-amber-400' : isStudent ? 'border-sky-400' : 'border-teal-400';
             const dotColor = isAdmin ? 'bg-amber-400' : isStudent ? 'bg-sky-400' : 'bg-emerald-400';
 
-            container.innerHTML = `
+            userContainer.innerHTML = `
                 <div class="flex items-center space-x-3 bg-slate-900/90 p-1.5 pr-4 rounded-full border border-slate-800 shadow-md">
-                    <img src="${userAvatar}" alt="${user.name}" class="w-9 h-9 rounded-full object-cover border-2 ${avatarBorder}">
+                    <img src="${userAvatar}" alt="${currentUser.name}" class="w-9 h-9 rounded-full object-cover border-2 ${avatarBorder}">
                     <div class="hidden sm:block text-left">
                         <div class="text-xs font-bold text-white flex items-center space-x-1">
-                            <span>${user.name}</span>
+                            <span>${currentUser.name || 'Öğretmen'}</span>
                             <span class="inline-block w-2 h-2 rounded-full ${dotColor}"></span>
                         </div>
                         <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold border ${badgeColor}">
@@ -547,7 +549,7 @@ class AppState {
                 </div>
             `;
         } else {
-            container.innerHTML = `
+            userContainer.innerHTML = `
                 <form onsubmit="appState.handleLogin(event)" class="flex items-center space-x-2">
                     <div class="relative">
                         <input type="text" id="loginUsername" placeholder="Kullanıcı Adı" required 
