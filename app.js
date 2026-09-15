@@ -159,12 +159,20 @@ class AppState {
 
     deduplicateClasses(classes) {
         if (!Array.isArray(classes)) return [];
-        return Array.from(new Map(classes.filter(c => c && c.id).map(c => [c.id, c])).values());
+        return Array.from(
+            new Map(
+                classes.filter(Boolean).map(c => [`${c.branchId || c.branch}_${(c.name || '').trim().toLowerCase()}`, c])
+            ).values()
+        );
     }
 
     deduplicateStudents(students) {
         if (!Array.isArray(students)) return [];
-        return Array.from(new Map(students.filter(s => s && s.id).map(s => [s.id, s])).values());
+        return Array.from(
+            new Map(
+                students.filter(Boolean).map(s => [`${(s.name || '').trim().toLowerCase()}_${s.classId || s.className || ''}`, s])
+            ).values()
+        );
     }
 
     deduplicateUsers(users) {
@@ -202,12 +210,12 @@ class AppState {
                 this.data.branches = branchesRes.data;
             }
             if (classesRes.data && classesRes.data.length > 0) {
-                const uniqueClasses = Array.from(new Map(classesRes.data.map(c => [c.id, c])).values());
+                const uniqueClasses = this.deduplicateClasses(classesRes.data);
                 this.data.classes = uniqueClasses;
                 try { localStorage.setItem('classes', JSON.stringify(uniqueClasses)); } catch(e){}
             }
             if (studentsRes.data && studentsRes.data.length > 0) {
-                const uniqueStudents = Array.from(new Map(studentsRes.data.map(s => [s.id, s])).values());
+                const uniqueStudents = this.deduplicateStudents(studentsRes.data);
                 this.data.students = uniqueStudents;
                 try { localStorage.setItem('students', JSON.stringify(uniqueStudents)); } catch(e){}
             }
@@ -222,9 +230,9 @@ class AppState {
                 this.data.exportSettings = { savePath: setting.savePath || setting.save_path || 'C:\\Pars_Yoklama_Raporlari\\' };
             }
 
-            // Her ihtimale karşı render öncesinde sınıfları ve öğrencileri id alanına göre tekilleştir (Ezme Modu)
-            this.data.classes = Array.from(new Map(this.data.classes.map(c => [c.id, c])).values());
-            this.data.students = Array.from(new Map(this.data.students.map(s => [s.id, s])).values());
+            // Her ihtimale karşı render öncesinde sınıfları ve öğrencileri birleşik anahtarla tekilleştir (Ezme Modu)
+            this.data.classes = this.deduplicateClasses(this.data.classes);
+            this.data.students = this.deduplicateStudents(this.data.students);
             this.data.users = Array.from(new Map(this.data.users.map(u => [u.id, u])).values());
 
             this.saveLocalData();
@@ -675,8 +683,16 @@ class AppState {
     // EKRAN 1: LANDING SCREEN RENDER
     // -------------------------------------------------------------
     renderLandingScreen() {
-        const uniqueClasses = Array.from(new Map(this.data.classes.map(c => [c.id, c])).values());
-        const uniqueStudents = Array.from(new Map(this.data.students.map(s => [s.id, s])).values());
+        const uniqueClasses = Array.from(
+            new Map(
+                (this.data?.classes || []).map(c => [`${c.branchId || c.branch}_${(c.name || '').trim().toLowerCase()}`, c])
+            ).values()
+        );
+        const uniqueStudents = Array.from(
+            new Map(
+                (this.data?.students || []).map(s => [`${(s.name || '').trim().toLowerCase()}_${s.classId || s.className || ''}`, s])
+            ).values()
+        );
 
         const totalClasses = uniqueClasses.length;
         const totalStudents = uniqueStudents.length;
@@ -783,8 +799,16 @@ class AppState {
             }
         }
 
-        const uniqueClasses = Array.from(new Map(this.data.classes.map(c => [c.id, c])).values());
-        const uniqueStudents = Array.from(new Map(this.data.students.map(s => [s.id, s])).values());
+        const uniqueClasses = Array.from(
+            new Map(
+                (this.data?.classes || []).map(c => [`${c.branchId || c.branch}_${(c.name || '').trim().toLowerCase()}`, c])
+            ).values()
+        );
+        const uniqueStudents = Array.from(
+            new Map(
+                (this.data?.students || []).map(s => [`${(s.name || '').trim().toLowerCase()}_${s.classId || s.className || ''}`, s])
+            ).values()
+        );
 
         const branchClasses = uniqueClasses.filter(c => c.branchId === branch.id);
         const branchClassIds = branchClasses.map(c => c.id);
