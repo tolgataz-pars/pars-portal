@@ -1221,7 +1221,28 @@ class AppState {
         this.switchClassTab(this.activeClassTab || 'yoklama');
     }
 
-    switchClassTab(tabName) {
+    async loadCurriculumFromSupabase(classId) {
+        if (!supabaseClient) return;
+        const currentClassId = classId || this.selectedClassId;
+        if (!currentClassId) return;
+
+        try {
+            const { data: curriculumList, error } = await supabaseClient
+                .from('curriculum')
+                .select('*')
+                .eq('classId', currentClassId);
+
+            if (curriculumList && Array.isArray(curriculumList)) {
+                const otherItems = (this.data.curriculum || []).filter(c => c.classId !== currentClassId);
+                this.data.curriculum = [...otherItems, ...curriculumList];
+                this.saveData();
+            }
+        } catch (err) {
+            console.error("Supabase curriculum fetch error:", err);
+        }
+    }
+
+    async switchClassTab(tabName) {
         this.activeClassTab = tabName;
 
         const btnYoklama = document.getElementById('tabBtnYoklama');
@@ -1249,6 +1270,7 @@ class AppState {
         } else if (tabName === 'mufredat') {
             if (btnMufredat) btnMufredat.className = "px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 shrink-0";
             if (panelMufredat) panelMufredat.classList.remove('hidden');
+            await this.loadCurriculumFromSupabase(this.selectedClassId);
             this.renderCurriculumList();
         } else if (tabName === 'odev') {
             if (btnOdev) btnOdev.className = "px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-amber-600 text-white shadow-lg shadow-amber-600/30 shrink-0";
@@ -1619,15 +1641,15 @@ class AppState {
         document.getElementById('curriculumModal').classList.add('hidden');
     }
 
-    handleSaveCurriculum(e) {
+    async handleSaveCurriculum(e) {
         e.preventDefault();
         const id = document.getElementById('modalCurrId').value;
-        const level = document.getElementById('modalCurrLevel').value;
+        const level = document.getElementById('modalCurrLevel')?.value || 'General';
         const topic = document.getElementById('modalCurrTopic').value.trim();
         const description = document.getElementById('modalCurrDescription').value.trim();
         const startDate = document.getElementById('modalCurrStartDate').value;
         const endDate = document.getElementById('modalCurrEndDate').value;
-        const teacher = document.getElementById('modalCurrTeacher').value;
+        const teacher = document.getElementById('modalCurrTeacher').value || (this.data.currentUser ? this.data.currentUser.name : 'Öğretmen');
 
         let targetItem;
 
@@ -1640,7 +1662,6 @@ class AppState {
                 targetItem.startDate = startDate;
                 targetItem.endDate = endDate;
                 targetItem.teacher = teacher;
-                this.showToast("Müfredat konusu güncellendi.", "success");
             }
         } else {
             targetItem = {
@@ -1655,16 +1676,28 @@ class AppState {
             };
             if (!this.data.curriculum) this.data.curriculum = [];
             this.data.curriculum.push(targetItem);
-            this.showToast("Yeni müfredat konusu eklendi.", "success");
         }
 
         this.saveData();
-        if (supabaseClient && targetItem) supabaseClient.from('curriculum').upsert(targetItem);
+
+        if (supabaseClient && targetItem) {
+            const { error } = await supabaseClient.from('curriculum').upsert([targetItem]);
+            if (error) {
+                console.error("Supabase handleSaveCurriculum error:", error);
+                this.showToast("Müfredat kaydedilirken veritabanı hatası oluştu: " + error.message, "error");
+            } else {
+                this.showToast(id ? "Müfredat konusu güncellendi." : "Yeni müfredat konusu eklendi.", "success");
+                await this.loadCurriculumFromSupabase(this.selectedClassId);
+            }
+        } else {
+            this.showToast(id ? "Müfredat konusu güncellendi." : "Yeni müfredat konusu eklendi.", "success");
+        }
+
         this.closeCurriculumModal();
         this.renderCurriculumList();
     }
 
-    deleteCurriculumItem(currId) {
+    async deleteCurriculumItem(currId) {
         const item = (this.data.curriculum || []).find(c => c.id === currId);
         if (!item) return;
 
@@ -1678,9 +1711,14 @@ class AppState {
         }
 
         if (confirm(`'${item.topic}' müfredat konusunu silmek istediğinizden emin misiniz?`)) {
-            this.data.curriculum = this.data.curriculum.filter(c => c.id !== currId);
-            if (supabaseClient) supabaseClient.from('curriculum').delete().eq('id', currId);
-            this.saveData();
+            if (supabaseClient) {
+                const { error } = await supabaseClient.from('curriculum').delete().eq('id', currId);
+                if (error) console.error("Supabase deleteCurriculumItem error:", error);
+                await this.loadCurriculumFromSupabase(this.selectedClassId);
+            } else {
+                this.data.curriculum = this.data.curriculum.filter(c => c.id !== currId);
+                this.saveData();
+            }
             this.showToast("Müfredat konusu silindi.", "info");
             this.renderCurriculumList();
         }
