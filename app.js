@@ -1136,12 +1136,20 @@ class AppState {
                     if (s.classId === currentClassId) {
                         if (recordMap.has(s.id)) {
                             s.attendance = recordMap.get(s.id);
-                            s.date = currentDate;
+                        } else {
+                            s.attendance = 'Geldi';
                         }
                     }
                 });
-                this.saveData();
+            } else {
+                // If no record exists for this date yet, default all students in this class to 'Geldi'
+                this.data.students.forEach(s => {
+                    if (s.classId === currentClassId) {
+                        s.attendance = 'Geldi';
+                    }
+                });
             }
+            this.saveData();
         } catch (err) {
             console.error("Supabase attendance fetch error:", err);
         }
@@ -1153,6 +1161,12 @@ class AppState {
     async renderClassDetailScreen() {
         const currentClass = this.data.classes.find(c => c.id === this.selectedClassId);
         if (!currentClass) return;
+
+        const dateInput = document.getElementById('globalAttendanceDate');
+        if (dateInput) {
+            if (!this.selectedDate) this.selectedDate = new Date().toISOString().split('T')[0];
+            dateInput.value = this.selectedDate;
+        }
 
         // Load attendance for current class and selected date from Supabase
         await this.loadAttendanceFromSupabase(this.selectedClassId, this.selectedDate);
@@ -1932,7 +1946,7 @@ class AppState {
         if (students.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="py-12 text-center text-slate-500">
+                    <td colspan="4" class="py-12 text-center text-slate-500">
                         <i data-lucide="user-x" class="w-10 h-10 mx-auto mb-2 text-slate-600"></i>
                         <p class="font-medium text-white">Öğrenci Kaydı Bulunamadı</p>
                         <p class="text-xs text-slate-400 mt-1">Bu sınıfta kayıtlı öğrenci yok veya filtrelerle eşleşmedi.</p>
@@ -1969,14 +1983,7 @@ class AppState {
                         </span>
                     </td>
 
-                    <!-- 3. Tarih (Datepicker - Disabled for Students) -->
-                    <td class="py-4 px-4 text-xs text-slate-300">
-                        <input type="date" style="color-scheme: dark;" ${isStudent ? 'disabled' : ''} value="${student.date || this.selectedDate}" 
-                               onchange="appState.updateStudentDate('${student.id}', this.value)"
-                               class="bg-slate-950 border border-slate-800 px-2 py-1 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-teal-500 ${isStudent ? 'cursor-not-allowed text-slate-400' : ''}">
-                    </td>
-
-                    <!-- 5. Yoklama (Disabled for Students) -->
+                    <!-- 3. Yoklama (Disabled for Students) -->
                     <td class="py-4 px-6 text-center">
                         <button ${isStudent ? 'disabled' : ''} onclick="appState.toggleAttendance('${student.id}')"
                                 class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm ${isPresent ? 'badge-geldi' : 'badge-gelmedi'} ${isStudent ? 'cursor-not-allowed pointer-events-none opacity-90' : ''}"
