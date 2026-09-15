@@ -989,7 +989,7 @@ class AppState {
         document.getElementById('classModal').classList.add('hidden');
     }
 
-    handleSaveClass(e) {
+    async handleSaveClass(e) {
         e.preventDefault();
         if (!this.isAdmin()) {
             this.showToast("Sınıf kaydetme yetkisi yalnızca Yöneticidedir!", "error");
@@ -1014,7 +1014,6 @@ class AppState {
                 targetClass.schedule = schedule;
                 targetClass.studentUsername = studentUsername;
                 targetClass.studentPassword = studentPassword;
-                this.showToast("Sınıf bilgileri güncellendi.", "success");
             }
         } else {
             targetClass = {
@@ -1029,16 +1028,28 @@ class AppState {
                 studentPassword: studentPassword
             };
             this.data.classes.push(targetClass);
-            this.showToast("Yeni sınıf başarıyla oluşturuldu.", "success");
         }
 
         this.saveData();
-        if (supabaseClient && targetClass) supabaseClient.from('classes').upsert(targetClass);
+
+        if (supabaseClient && targetClass) {
+            const { error } = await supabaseClient.from('classes').upsert([targetClass]);
+            if (error) {
+                console.error("Supabase saveClass error:", error);
+                this.showToast("Sınıf kaydedilirken veritabanı hatası oluştu: " + error.message, "error");
+            } else {
+                this.showToast(id ? "Sınıf bilgileri güncellendi." : "Yeni sınıf başarıyla oluşturuldu.", "success");
+                await this.syncDataFromSupabase();
+            }
+        } else {
+            this.showToast(id ? "Sınıf bilgileri güncellendi." : "Yeni sınıf başarıyla oluşturuldu.", "success");
+        }
+
         this.closeClassModal();
         this.renderBranchScreen();
     }
 
-    deleteClass(classId) {
+    async deleteClass(classId) {
         if (!this.isAdmin()) {
             this.showToast("Sınıf silme yetkisi yalnızca Yöneticidedir!", "error");
             return;
@@ -1047,15 +1058,20 @@ class AppState {
         if (!cls) return;
 
         if (confirm(`'${cls.name}' sınıfını silmek istediğinizden emin misiniz?`)) {
-            this.data.classes = this.data.classes.filter(c => c.id !== classId);
-            this.data.students = this.data.students.filter(s => s.classId !== classId);
-
             if (supabaseClient) {
-                supabaseClient.from('classes').delete().eq('id', classId);
-                supabaseClient.from('students').delete().eq('classId', classId);
+                const { error: errStudents } = await supabaseClient.from('students').delete().eq('classId', classId);
+                if (errStudents) console.error("Supabase delete students error:", errStudents);
+
+                const { error: errClass } = await supabaseClient.from('classes').delete().eq('id', classId);
+                if (errClass) console.error("Supabase delete class error:", errClass);
+
+                await this.syncDataFromSupabase();
+            } else {
+                this.data.classes = this.data.classes.filter(c => c.id !== classId);
+                this.data.students = this.data.students.filter(s => s.classId !== classId);
+                this.saveData();
             }
 
-            this.saveData();
             this.showToast("Sınıf ve bağlı kayıtlar silindi.", "info");
             this.renderBranchScreen();
         }
@@ -2043,7 +2059,7 @@ class AppState {
         document.getElementById('studentModal').classList.add('hidden');
     }
 
-    handleSaveStudent(e) {
+    async handleSaveStudent(e) {
         e.preventDefault();
         if (!this.isAdmin()) {
             this.showToast("Öğrenci kaydetme yetkisi yalnızca Yöneticidedir!", "error");
@@ -2062,7 +2078,6 @@ class AppState {
                 targetStudent.name = name;
                 targetStudent.date = date;
                 targetStudent.attendance = attendance;
-                this.showToast("Öğrenci bilgileri güncellendi.", "success");
             }
         } else {
             targetStudent = {
@@ -2073,16 +2088,28 @@ class AppState {
                 attendance: attendance
             };
             this.data.students.push(targetStudent);
-            this.showToast("Yeni öğrenci sınıfa eklendi.", "success");
         }
 
         this.saveData();
-        if (supabaseClient && targetStudent) supabaseClient.from('students').upsert(targetStudent);
+
+        if (supabaseClient && targetStudent) {
+            const { error } = await supabaseClient.from('students').upsert([targetStudent]);
+            if (error) {
+                console.error("Supabase saveStudent error:", error);
+                this.showToast("Öğrenci kaydedilirken veritabanı hatası oluştu: " + error.message, "error");
+            } else {
+                this.showToast(id ? "Öğrenci bilgileri güncellendi." : "Yeni öğrenci sınıfa eklendi.", "success");
+                await this.syncDataFromSupabase();
+            }
+        } else {
+            this.showToast(id ? "Öğrenci bilgileri güncellendi." : "Yeni öğrenci sınıfa eklendi.", "success");
+        }
+
         this.closeStudentModal();
         this.filterStudents();
     }
 
-    deleteStudent(studentId) {
+    async deleteStudent(studentId) {
         if (!this.isAdmin()) {
             this.showToast("Öğrenci silme yetkisi yalnızca Yöneticidedir!", "error");
             return;
@@ -2091,9 +2118,14 @@ class AppState {
         if (!student) return;
 
         if (confirm(`'${student.name}' adlı öğrenci kaydını silmek istediğinize emin misiniz?`)) {
-            this.data.students = this.data.students.filter(s => s.id !== studentId);
-            if (supabaseClient) supabaseClient.from('students').delete().eq('id', studentId);
-            this.saveData();
+            if (supabaseClient) {
+                const { error } = await supabaseClient.from('students').delete().eq('id', studentId);
+                if (error) console.error("Supabase deleteStudent error:", error);
+                await this.syncDataFromSupabase();
+            } else {
+                this.data.students = this.data.students.filter(s => s.id !== studentId);
+                this.saveData();
+            }
             this.showToast("Öğrenci kaydı silindi.", "info");
             this.filterStudents();
         }
