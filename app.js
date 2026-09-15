@@ -1374,21 +1374,17 @@ class AppState {
                     countedFinals++;
                 }
 
-                // Authorization logic per role & skill
-                const isOwner = item.teacherId && String(item.teacherId) === String(currentUser.id);
-                const isOwnerName = item.teacherName && currentUser.name && item.teacherName.trim().toLowerCase() === currentUser.name.trim().toLowerCase();
-                const isTeacherSkillMatch = currentUser.role === 'teacher' && (
-                    !currentUser.skill || 
-                    currentUser.skill === 'Tüm Beceriler' || 
-                    currentUser.skill.toLowerCase().includes(sk.key.toLowerCase())
-                );
-
-                const canEditSkill = !this.isStudent() && (
-                    isAdmin ||
-                    isOwner ||
-                    isOwnerName ||
-                    isTeacherSkillMatch
-                );
+                // Authorization logic per role & skill matching user profile skill field
+                const userSkill = currentUser?.skill || currentUser?.skills || '';
+                const canEditSkill = !this.isStudent() && (isAdmin || (
+                    Array.isArray(userSkill) 
+                        ? (userSkill.includes(sk.key) || userSkill.includes('Tüm Beceriler') || userSkill.includes('Tüm'))
+                        : (
+                            userSkill.toLowerCase().includes(sk.key.toLowerCase()) || 
+                            userSkill.toLowerCase().includes('tüm') || 
+                            userSkill.toLowerCase().includes('tum')
+                        )
+                ));
 
                 return `
                     <tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/60 text-xs">
@@ -1540,6 +1536,25 @@ class AppState {
     openEditExamModal(studentId, skill = 'Reading') {
         if (this.isStudent()) {
             this.showToast("Öğrenciler not ve analiz değiştiremez!", "warning");
+            return;
+        }
+
+        const currentUser = this.data.currentUser || {};
+        const userSkill = currentUser?.skill || currentUser?.skills || '';
+        const isAdmin = currentUser?.role === 'admin' || this.isAdmin();
+
+        const canEditThisSkill = !this.isStudent() && (isAdmin || (
+            Array.isArray(userSkill) 
+                ? (userSkill.includes(skill) || userSkill.includes('Tüm Beceriler') || userSkill.includes('Tüm'))
+                : (
+                    userSkill.toLowerCase().includes(skill.toLowerCase()) || 
+                    userSkill.toLowerCase().includes('tüm') || 
+                    userSkill.toLowerCase().includes('tum')
+                )
+        ));
+
+        if (!canEditThisSkill) {
+            this.showToast(`Bu beceriyi (${skill}) düzenleme yetkiniz bulunmamaktadır!`, "warning");
             return;
         }
 
