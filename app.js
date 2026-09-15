@@ -50,106 +50,471 @@ const INITIAL_DATA = {
         }
     ],
     classes: [
-        // Gaziemir Classes
+        // ALSANCAK ŞUBESİ (3 Sınıf)
         {
-            id: "cls-1",
-            branchId: "gaziemir",
-            name: "B2-101 Hızlandırılmış İngilizce",
-            level: "B2 Upper-Intermediate",
-            teacher: "Atanmadı",
-            schedule: "Pzt - Çar - Cuma 18:30 - 20:30",
-            capacity: 15,
-            studentUsername: "b2-101",
-            studentPassword: "12345"
-        },
-        {
-            id: "cls-2",
-            branchId: "gaziemir",
-            name: "A2-201 Genel İngilizce",
-            level: "A2 Elementary",
-            teacher: "Atanmadı",
-            schedule: "Salı - Perşembe 14:00 - 17:00",
-            capacity: 12,
-            studentUsername: "a2-201",
-            studentPassword: "12345"
-        },
-        {
-            id: "cls-3",
-            branchId: "gaziemir",
-            name: "YDS / YÖKDİL Sınav Grubu",
-            level: "YDS / YÖKDİL",
-            teacher: "Murat Kaya",
-            schedule: "Cumartesi - Pazar 10:00 - 13:00",
-            capacity: 10,
-            studentUsername: "yds-2026",
-            studentPassword: "12345"
-        },
-        // Alsancak Classes
-        {
-            id: "cls-4",
+            id: "cls-als-1",
             branchId: "alsancak",
-            name: "C1-301 İleri Konuşma Kulübü",
-            level: "C1 Advanced",
-            teacher: "Sarah Jenkins",
-            schedule: "Pazartesi - Çarşamba 19:00 - 21:00",
-            capacity: 14,
-            studentUsername: "c1-301",
-            studentPassword: "12345"
-        },
-        {
-            id: "cls-5",
-            branchId: "alsancak",
-            name: "IELTS Akademik Hazırlık",
-            level: "IELTS / TOEFL",
-            teacher: "David Miller",
-            schedule: "Salı - Perşembe 18:00 - 21:00",
-            capacity: 12,
-            studentUsername: "ielts-2026",
-            studentPassword: "12345"
-        },
-        {
-            id: "cls-6",
-            branchId: "alsancak",
-            name: "B1-102 İş İngilizcesi (Business)",
+            name: "YETİŞKİN B1 ALSANCAK",
             level: "B1 Intermediate",
-            teacher: "Ayşe Özkan",
-            schedule: "Cumartesi - Pazar 14:00 - 17:00",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi 14:00 - 17:40",
             capacity: 15,
-            studentUsername: "b1-102",
+            studentUsername: "yetiskin-b1-alsancak",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-als-2",
+            branchId: "alsancak",
+            name: "IELTS 1.1 ALSANCAK",
+            level: "IELTS / TOEFL",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi 10:00 - 13:45",
+            capacity: 15,
+            studentUsername: "ielts-11-alsancak",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-als-3",
+            branchId: "alsancak",
+            name: "IELTS 1.2 ALSANCAK",
+            level: "IELTS / TOEFL",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi 10:00 - 13:45",
+            capacity: 15,
+            studentUsername: "ielts-12-alsancak",
+            studentPassword: "12345"
+        },
+
+        // GAZİEMİR ŞUBESİ (22 Sınıf)
+        {
+            id: "cls-gaz-1",
+            branchId: "gaziemir",
+            name: "MOVERS 1",
+            level: "A1 Movers",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi - Pazar 13:00 - 14:45",
+            capacity: 15,
+            studentUsername: "movers-1",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-2",
+            branchId: "gaziemir",
+            name: "MOVERS 2",
+            level: "A1 Movers",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Pazartesi - Perşembe 15:00 - 16:45",
+            capacity: 15,
+            studentUsername: "movers-2",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-3",
+            branchId: "gaziemir",
+            name: "FLYERS 1",
+            level: "A2 Flyers",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Salı - Perşembe 17:00 - 18:45",
+            capacity: 15,
+            studentUsername: "flyers-1",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-4",
+            branchId: "gaziemir",
+            name: "FLYERS 2",
+            level: "A2 Flyers",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi - Pazar 11:00 - 12:45",
+            capacity: 15,
+            studentUsername: "flyers-2",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-5",
+            branchId: "gaziemir",
+            name: "FLYERS 3",
+            level: "A2 Flyers",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Pazartesi - Cuma 17:00 - 18:45",
+            capacity: 15,
+            studentUsername: "flyers-3",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-6",
+            branchId: "gaziemir",
+            name: "FLYERS 4",
+            level: "A2 Flyers",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi - Pazar 15:00 - 16:45",
+            capacity: 15,
+            studentUsername: "flyers-4",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-7",
+            branchId: "gaziemir",
+            name: "OKET 1",
+            level: "A2 Key (KET)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi - Pazar 11:00 - 12:45",
+            capacity: 15,
+            studentUsername: "oket-1",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-8",
+            branchId: "gaziemir",
+            name: "OKET 2",
+            level: "A2 Key (KET)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi 17:00-18:45 | Pazar 15:00-16:45",
+            capacity: 15,
+            studentUsername: "oket-2",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-9",
+            branchId: "gaziemir",
+            name: "OKET PLUS 1",
+            level: "A2 Key (KET) Plus",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Salı - Çarşamba 17:00 - 18:45",
+            capacity: 15,
+            studentUsername: "oket-plus-1",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-10",
+            branchId: "gaziemir",
+            name: "OKET PLUS 2",
+            level: "A2 Key (KET) Plus",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi 17:00-18:45 | Pazar 13:00-14:45",
+            capacity: 15,
+            studentUsername: "oket-plus-2",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-11",
+            branchId: "gaziemir",
+            name: "OPET 1",
+            level: "B1 Preliminary (PET)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Pazartesi - Cuma 17:00 - 18:45",
+            capacity: 15,
+            studentUsername: "opet-1",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-12",
+            branchId: "gaziemir",
+            name: "OPET 2",
+            level: "B1 Preliminary (PET)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi - Pazar 11:00 - 12:45",
+            capacity: 15,
+            studentUsername: "opet-2",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-13",
+            branchId: "gaziemir",
+            name: "OPET 3",
+            level: "B1 Preliminary (PET)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi - Pazar 15:00 - 16:45",
+            capacity: 15,
+            studentUsername: "opet-3",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-14",
+            branchId: "gaziemir",
+            name: "OPET 4",
+            level: "B1 Preliminary (PET)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Salı - Perşembe 17:00 - 18:45",
+            capacity: 15,
+            studentUsername: "opet-4",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-15",
+            branchId: "gaziemir",
+            name: "OPET PLUS",
+            level: "B1 Preliminary (PET) Plus",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Çarşamba 18:00 - 19:45",
+            capacity: 15,
+            studentUsername: "opet-plus",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-16",
+            branchId: "gaziemir",
+            name: "OFCE",
+            level: "B2 First (FCE)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi 17:00-18:45 | Pazar 13:00-14:45",
+            capacity: 15,
+            studentUsername: "ofce",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-17",
+            branchId: "gaziemir",
+            name: "LİSE KET 1",
+            level: "A2 Key (KET)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Pazartesi 17:00-18:45 | Cuma 19:00-20:45",
+            capacity: 15,
+            studentUsername: "lise-ket-1",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-18",
+            branchId: "gaziemir",
+            name: "LİSE KET 2",
+            level: "A2 Key (KET)",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Pazartesi 19:00-20:45 | Cuma 17:00-18:45",
+            capacity: 15,
+            studentUsername: "lise-ket-2",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-19",
+            branchId: "gaziemir",
+            name: "YETİŞKİN A2",
+            level: "A2 Elementary",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Pazartesi - Cuma 19:00 - 20:45",
+            capacity: 15,
+            studentUsername: "yetiskin-a2",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-20",
+            branchId: "gaziemir",
+            name: "YET-LİSE B1 1",
+            level: "B1 Intermediate",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Pazartesi - Perşembe 19:00 - 20:45",
+            capacity: 15,
+            studentUsername: "yet-lise-b1-1",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-21",
+            branchId: "gaziemir",
+            name: "YET-LİSE B1 2",
+            level: "B1 Intermediate",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Cumartesi 13:00-14:45 | Pazar 17:00-19:45",
+            capacity: 15,
+            studentUsername: "yet-lise-b1-2",
+            studentPassword: "12345"
+        },
+        {
+            id: "cls-gaz-22",
+            branchId: "gaziemir",
+            name: "IELTS GİRİŞ GAZİEMİR",
+            level: "IELTS / TOEFL",
+            teacher: "Dönüşümlü Öğretmen",
+            schedule: "Salı - Perşembe 19:00 - 20:45",
+            capacity: 15,
+            studentUsername: "ielts-giris-gaziemir",
             studentPassword: "12345"
         }
     ],
     students: [
-        // B2-101 (cls-1)
-        { id: "std-1", classId: "cls-1", name: "Caner Arslan", age: 24, skill: "Speaking", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-2", classId: "cls-1", name: "Zeynep Yıldız", age: 22, skill: "Reading", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-3", classId: "cls-1", name: "Emre Şahin", age: 27, skill: "Writing", date: "2026-08-29", attendance: "Gelmedi" },
-        { id: "std-4", classId: "cls-1", name: "Selin Yılmaz", age: 21, skill: "Listening", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-5", classId: "cls-1", name: "Burak Çelik", age: 25, skill: "Speaking", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-6", classId: "cls-1", name: "Deniz Öztürk", age: 23, skill: "Reading", date: "2026-08-29", attendance: "Gelmedi" },
-        { id: "std-7", classId: "cls-1", name: "Gizem Acar", age: 26, skill: "Writing", date: "2026-08-29", attendance: "Geldi" },
-        
-        // A2-201 (cls-2)
-        { id: "std-8", classId: "cls-2", name: "Alperen Aydın", age: 19, skill: "Reading", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-9", classId: "cls-2", name: "Merve Kılıç", age: 20, skill: "Listening", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-10", classId: "cls-2", name: "Kaan Erdoğan", age: 21, skill: "Speaking", date: "2026-08-29", attendance: "Gelmedi" },
+        // YETİŞKİN B1 ALSANCAK (cls-als-1)
+        { id: "std-als-1-1", classId: "cls-als-1", name: "Ceylin Uzun", age: 22, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-1-2", classId: "cls-als-1", name: "Nil Melis Altuntaş", age: 23, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-1-3", classId: "cls-als-1", name: "Şevval Nisa Arslan", age: 21, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-1-4", classId: "cls-als-1", name: "Ceylin Güvendik", age: 24, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-1-5", classId: "cls-als-1", name: "Zeynep Ela Canıbek", age: 22, date: "2026-09-15", attendance: "Geldi" },
 
-        // YDS (cls-3)
-        { id: "std-11", classId: "cls-3", name: "Turgut Karaca", age: 31, skill: "Reading", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-12", classId: "cls-3", name: "Aslı Şen", age: 29, skill: "Writing", date: "2026-08-29", attendance: "Geldi" },
+        // IELTS 1.1 ALSANCAK (cls-als-2)
+        { id: "std-als-2-1", classId: "cls-als-2", name: "Enes Sazak", age: 23, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-2-2", classId: "cls-als-2", name: "Melis Ceylan", age: 22, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-2-3", classId: "cls-als-2", name: "Elfin Baran", age: 21, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-2-4", classId: "cls-als-2", name: "Masal Güzel", age: 20, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-2-5", classId: "cls-als-2", name: "Cansu Sasa", age: 24, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-2-6", classId: "cls-als-2", name: "Elif Hacıfazlıoğlu", age: 23, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-2-7", classId: "cls-als-2", name: "Defne Gökdoğan", age: 22, date: "2026-09-15", attendance: "Geldi" },
 
-        // C1-301 Alsancak (cls-4)
-        { id: "std-13", classId: "cls-4", name: "Sertan Aksoy", age: 28, skill: "Speaking", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-14", classId: "cls-4", name: "Melis Koç", age: 25, skill: "Listening", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-15", classId: "cls-4", name: "Bora Tekin", age: 30, skill: "Speaking", date: "2026-08-29", attendance: "Gelmedi" },
+        // IELTS 1.2 ALSANCAK (cls-als-3)
+        { id: "std-als-3-1", classId: "cls-als-3", name: "Duru Gökdoğan", age: 22, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-3-2", classId: "cls-als-3", name: "Arda Çıtaker", age: 24, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-3-3", classId: "cls-als-3", name: "Sinem Ceylan", age: 23, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-3-4", classId: "cls-als-3", name: "Arman Çankaya", age: 25, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-3-5", classId: "cls-als-3", name: "Muhammet Ali Şentuna", age: 22, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-3-6", classId: "cls-als-3", name: "Çağan Yiğitalp", age: 21, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-3-7", classId: "cls-als-3", name: "Egehan Toloğlu", age: 23, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-als-3-8", classId: "cls-als-3", name: "Tuğçe Baran", age: 24, date: "2026-09-15", attendance: "Geldi" },
 
-        // IELTS Alsancak (cls-5)
-        { id: "std-16", classId: "cls-5", name: "Cem Taner", age: 23, skill: "Writing", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-17", classId: "cls-5", name: "Duygu Solmaz", age: 24, skill: "Reading", date: "2026-08-29", attendance: "Geldi" },
+        // MOVERS 1 (cls-gaz-1)
+        { id: "std-gaz-1-1", classId: "cls-gaz-1", name: "Elif Dinçer", age: 10, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-1-2", classId: "cls-gaz-1", name: "Hasan Ali Karagöz", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-1-3", classId: "cls-gaz-1", name: "Emir Bozkurt", age: 10, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-1-4", classId: "cls-gaz-1", name: "Azra Güler", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-1-5", classId: "cls-gaz-1", name: "Zeynep Alya Erdoğan", age: 10, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-1-6", classId: "cls-gaz-1", name: "Asya Çiftçi", age: 11, date: "2026-09-15", attendance: "Geldi" },
 
-        // B1-102 Alsancak (cls-6)
-        { id: "std-18", classId: "cls-6", name: "Onur Güven", age: 32, skill: "Speaking", date: "2026-08-29", attendance: "Geldi" },
-        { id: "std-19", classId: "cls-6", name: "Hande Yavuz", age: 27, skill: "Listening", date: "2026-08-29", attendance: "Geldi" }
+        // MOVERS 2 (cls-gaz-2)
+        { id: "std-gaz-2-1", classId: "cls-gaz-2", name: "Kuzey Çubukçu", age: 10, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-2-2", classId: "cls-gaz-2", name: "Yiğit Berk Çalışır", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-2-3", classId: "cls-gaz-2", name: "Aslı Uzunoğlu", age: 10, date: "2026-09-15", attendance: "Geldi" },
+
+        // FLYERS 1 (cls-gaz-3)
+        { id: "std-gaz-3-1", classId: "cls-gaz-3", name: "Ilgaz Arslan", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-3-2", classId: "cls-gaz-3", name: "Demirkan Demir", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-3-3", classId: "cls-gaz-3", name: "Ertuğrul Eraslan", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-3-4", classId: "cls-gaz-3", name: "Zeynep Topkaya", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-3-5", classId: "cls-gaz-3", name: "Sevde Nur Gergin", age: 12, date: "2026-09-15", attendance: "Geldi" },
+
+        // FLYERS 2 (cls-gaz-4)
+        { id: "std-gaz-4-1", classId: "cls-gaz-4", name: "Gözde Ayaz", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-4-2", classId: "cls-gaz-4", name: "Ece Bilgili", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-4-3", classId: "cls-gaz-4", name: "Kamil Ekizoğlu", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-4-4", classId: "cls-gaz-4", name: "Doğa Balyemez", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-4-5", classId: "cls-gaz-4", name: "Çınar Yeniay", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-4-6", classId: "cls-gaz-4", name: "Mustafa Kırabalı", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-4-7", classId: "cls-gaz-4", name: "Ela Yıldız", age: 12, date: "2026-09-15", attendance: "Geldi" },
+
+        // FLYERS 3 (cls-gaz-5)
+        { id: "std-gaz-5-1", classId: "cls-gaz-5", name: "Damla Sasa", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-5-2", classId: "cls-gaz-5", name: "Asel Uzunoğlu", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-5-3", classId: "cls-gaz-5", name: "Ege Aytaç", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-5-4", classId: "cls-gaz-5", name: "Ecrin Yalçınkaya", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-5-5", classId: "cls-gaz-5", name: "Kaan Soğukkuyu", age: 12, date: "2026-09-15", attendance: "Geldi" },
+
+        // FLYERS 4 (cls-gaz-6)
+        { id: "std-gaz-6-1", classId: "cls-gaz-6", name: "Tusem Deniz Kılınç", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-6-2", classId: "cls-gaz-6", name: "Gökçe İbiş", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-6-3", classId: "cls-gaz-6", name: "Sevdenur Gergin", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-6-4", classId: "cls-gaz-6", name: "Nisa Çöloğlu", age: 11, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-6-5", classId: "cls-gaz-6", name: "Doruk Zar", age: 12, date: "2026-09-15", attendance: "Geldi" },
+
+        // OKET 1 (cls-gaz-7)
+        { id: "std-gaz-7-1", classId: "cls-gaz-7", name: "İlke Güneş", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-7-2", classId: "cls-gaz-7", name: "Elif Vatansever", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-7-3", classId: "cls-gaz-7", name: "Kumsal Güzel", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-7-4", classId: "cls-gaz-7", name: "Defne Akın", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-7-5", classId: "cls-gaz-7", name: "Beste Bekaroğlu", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-7-6", classId: "cls-gaz-7", name: "Hazal Arabacı", age: 13, date: "2026-09-15", attendance: "Geldi" },
+
+        // OKET 2 (cls-gaz-8)
+        { id: "std-gaz-8-1", classId: "cls-gaz-8", name: "Alp Çelik", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-8-2", classId: "cls-gaz-8", name: "Zeynep Nihal Çil", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-8-3", classId: "cls-gaz-8", name: "Kıvanç Nazır", age: 12, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-8-4", classId: "cls-gaz-8", name: "Evin Bozkurt", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-8-5", classId: "cls-gaz-8", name: "Aslı Duru Karadaş", age: 12, date: "2026-09-15", attendance: "Geldi" },
+
+        // OKET PLUS 1 (cls-gaz-9)
+        { id: "std-gaz-9-1", classId: "cls-gaz-9", name: "Osman Kaan Kılıç", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-9-2", classId: "cls-gaz-9", name: "Alya Kalyoncu", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-9-3", classId: "cls-gaz-9", name: "Doruk Ödemiş", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-9-4", classId: "cls-gaz-9", name: "Yaren İpek Şenol", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-9-5", classId: "cls-gaz-9", name: "Eymen Uşar", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-9-6", classId: "cls-gaz-9", name: "Zeynep Posacı", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-9-7", classId: "cls-gaz-9", name: "Sare Keskin", age: 14, date: "2026-09-15", attendance: "Geldi" },
+
+        // OKET PLUS 2 (cls-gaz-10)
+        { id: "std-gaz-10-1", classId: "cls-gaz-10", name: "Ali Kerem Erdoğan", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-10-2", classId: "cls-gaz-10", name: "Kıvanç Gülsenöz", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-10-3", classId: "cls-gaz-10", name: "Elif Yılmaz", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-10-4", classId: "cls-gaz-10", name: "Ayaz Kalyoncu", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-10-5", classId: "cls-gaz-10", name: "Hasan Emir Kutlu", age: 13, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-10-6", classId: "cls-gaz-10", name: "Serhat İnmez", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-10-7", classId: "cls-gaz-10", name: "Yiğit Yavuz", age: 13, date: "2026-09-15", attendance: "Geldi" },
+
+        // OPET 1 (cls-gaz-11)
+        { id: "std-gaz-11-1", classId: "cls-gaz-11", name: "Ela Arslan", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-11-2", classId: "cls-gaz-11", name: "İlayda Ceylan", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-11-3", classId: "cls-gaz-11", name: "Kerem Özcan", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-11-4", classId: "cls-gaz-11", name: "Işıl Çiçek", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-11-5", classId: "cls-gaz-11", name: "Derin Açığ", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-11-6", classId: "cls-gaz-11", name: "Doğa Başkurt", age: 14, date: "2026-09-15", attendance: "Geldi" },
+
+        // OPET 2 (cls-gaz-12)
+        { id: "std-gaz-12-1", classId: "cls-gaz-12", name: "Yunus Bekaroğlu", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-12-2", classId: "cls-gaz-12", name: "Yağmur Çelik", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-12-3", classId: "cls-gaz-12", name: "Eylül Taşçı", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-12-4", classId: "cls-gaz-12", name: "Taylan Deniz Alakuş", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-12-5", classId: "cls-gaz-12", name: "Yusuf Emir Taş", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-12-6", classId: "cls-gaz-12", name: "Kerem Nazır", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-12-7", classId: "cls-gaz-12", name: "Duru Cinsgürbüz", age: 14, date: "2026-09-15", attendance: "Geldi" },
+
+        // OPET 3 (cls-gaz-13)
+        { id: "std-gaz-13-1", classId: "cls-gaz-13", name: "Meryem İbiş", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-13-2", classId: "cls-gaz-13", name: "Lavinya Özdeniz", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-13-3", classId: "cls-gaz-13", name: "Hatice Nur Makas", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-13-4", classId: "cls-gaz-13", name: "Elif Ayla Zar", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-13-5", classId: "cls-gaz-13", name: "Büşra Gergin", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-13-6", classId: "cls-gaz-13", name: "Asya Mertaslan", age: 15, date: "2026-09-15", attendance: "Geldi" },
+
+        // OPET 4 (cls-gaz-14)
+        { id: "std-gaz-14-1", classId: "cls-gaz-14", name: "Sarp Çelik", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-14-2", classId: "cls-gaz-14", name: "Gökalp Erişen", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-14-3", classId: "cls-gaz-14", name: "Rüzgar Mertbilek", age: 14, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-14-4", classId: "cls-gaz-14", name: "İsmail Yalçın", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-14-5", classId: "cls-gaz-14", name: "Elif Karagülle", age: 14, date: "2026-09-15", attendance: "Geldi" },
+
+        // OPET PLUS (cls-gaz-15)
+        { id: "std-gaz-15-1", classId: "cls-gaz-15", name: "Azra Tezcan", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-15-2", classId: "cls-gaz-15", name: "Mustafa Topkaya", age: 15, date: "2026-09-15", attendance: "Geldi" },
+
+        // OFCE (cls-gaz-16)
+        { id: "std-gaz-16-1", classId: "cls-gaz-16", name: "Efe Hacıfazlıoğlu", age: 16, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-16-2", classId: "cls-gaz-16", name: "Beril Demir", age: 16, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-16-3", classId: "cls-gaz-16", name: "Mustafa Sazak", age: 17, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-16-4", classId: "cls-gaz-16", name: "Çınar Topuz", age: 16, date: "2026-09-15", attendance: "Geldi" },
+
+        // LİSE KET 1 (cls-gaz-17)
+        { id: "std-gaz-17-1", classId: "cls-gaz-17", name: "Belinay İbkin", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-17-2", classId: "cls-gaz-17", name: "Öykü Varolsan", age: 16, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-17-3", classId: "cls-gaz-17", name: "Zeynep Yavuz", age: 15, date: "2026-09-15", attendance: "Geldi" },
+
+        // LİSE KET 2 (cls-gaz-18)
+        { id: "std-gaz-18-1", classId: "cls-gaz-18", name: "Alper Çiftçi", age: 16, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-18-2", classId: "cls-gaz-18", name: "Uraz Öztorun", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-18-3", classId: "cls-gaz-18", name: "Defne Naz Ayaz", age: 16, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-18-4", classId: "cls-gaz-18", name: "Deniz Molla", age: 15, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-18-5", classId: "cls-gaz-18", name: "Alper Aydoğdu", age: 16, date: "2026-09-15", attendance: "Geldi" },
+
+        // YETİŞKİN A2 (cls-gaz-19)
+        { id: "std-gaz-19-1", classId: "cls-gaz-19", name: "Azra Okumuş", age: 24, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-19-2", classId: "cls-gaz-19", name: "Duygu Özbabalık", age: 26, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-19-3", classId: "cls-gaz-19", name: "Gülşah Karababalar", age: 25, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-19-4", classId: "cls-gaz-19", name: "Yeliz Küçük", age: 28, date: "2026-09-15", attendance: "Geldi" },
+
+        // YET-LİSE B1 1 (cls-gaz-20)
+        { id: "std-gaz-20-1", classId: "cls-gaz-20", name: "Kağan Karadaş", age: 18, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-20-2", classId: "cls-gaz-20", name: "Eymen Bilek", age: 17, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-20-3", classId: "cls-gaz-20", name: "Arda Hepgüler", age: 19, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-20-4", classId: "cls-gaz-20", name: "Esra Çelik", age: 18, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-20-5", classId: "cls-gaz-20", name: "Kerem Soğukkuyu", age: 19, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-20-6", classId: "cls-gaz-20", name: "Emre Gül", age: 18, date: "2026-09-15", attendance: "Geldi" },
+
+        // YET-LİSE B1 2 (cls-gaz-21)
+        { id: "std-gaz-21-1", classId: "cls-gaz-21", name: "Kayra Şenol", age: 18, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-21-2", classId: "cls-gaz-21", name: "Sultan Yalçın", age: 19, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-21-3", classId: "cls-gaz-21", name: "Ela Çakır", age: 18, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-21-4", classId: "cls-gaz-21", name: "Melis Recepoğlu", age: 19, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-21-5", classId: "cls-gaz-21", name: "Serdar Aydoğdu", age: 18, date: "2026-09-15", attendance: "Geldi" },
+
+        // IELTS GİRİŞ GAZİEMİR (cls-gaz-22)
+        { id: "std-gaz-22-1", classId: "cls-gaz-22", name: "Eylül Asel Alican", age: 21, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-22-2", classId: "cls-gaz-22", name: "Furkan Karagöz", age: 23, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-22-3", classId: "cls-gaz-22", name: "Elif Dere", age: 22, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-22-4", classId: "cls-gaz-22", name: "Ela Akın", age: 20, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-22-5", classId: "cls-gaz-22", name: "Zeynep Alkan", age: 24, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-22-6", classId: "cls-gaz-22", name: "Damla Doğan", age: 22, date: "2026-09-15", attendance: "Geldi" },
+        { id: "std-gaz-22-7", classId: "cls-gaz-22", name: "Duru Ödemiş", age: 21, date: "2026-09-15", attendance: "Geldi" }
     ],
     curriculum: [
         {
@@ -297,8 +662,9 @@ class AppState {
                 this.data.exportSettings = { savePath: setting.savePath || setting.save_path || 'C:\\Pars_Yoklama_Raporlari\\' };
             }
 
-            // Tohumlama (Seed) YALNIZCA veritabanında users tablosu tamamen boşsa (0 kayıt) çalışır!
-            if (!hasUsers && (!usersRes.data || usersRes.data.length === 0)) {
+            // Tohumlama (Seed) YALNIZCA veritabanı tamamen boşsa veya eski varsayılan sınıflar varsa çalışır!
+            const needsSeed = !hasUsers || !classesRes.data || classesRes.data.length < 20 || !classesRes.data.some(c => c.id === 'cls-als-1');
+            if (needsSeed) {
                 await this.seedInitialDataToSupabase();
             } else {
                 this.saveLocalData();
@@ -316,7 +682,7 @@ class AppState {
         if (!supabaseClient) return;
 
         try {
-            console.log("☁️ Supabase veritabanı tamamen boş olduğu için varsayılan veriler yükleniyor...");
+            console.log("☁️ Supabase veritabanına yeni 25 sınıf ve öğrenci verileri yükleniyor...");
             await Promise.all([
                 supabaseClient.from('users').upsert(INITIAL_DATA.users),
                 supabaseClient.from('branches').upsert(INITIAL_DATA.branches),
@@ -326,9 +692,14 @@ class AppState {
                 supabaseClient.from('homeworks').upsert(INITIAL_DATA.homeworks),
                 supabaseClient.from('export_settings').upsert([{ id: 'main', savePath: 'C:\\Pars_Yoklama_Raporlari\\' }])
             ]);
-            this.data.users = JSON.parse(JSON.stringify(INITIAL_DATA.users));
+            this.data.classes = JSON.parse(JSON.stringify(INITIAL_DATA.classes));
+            this.data.students = JSON.parse(JSON.stringify(INITIAL_DATA.students));
             this.saveLocalData();
-            console.log("⚡ Varsayılan veriler yüklendi!");
+            this.renderAuthHeader();
+            if (this.currentView === 'landing') this.renderLandingScreen();
+            else if (this.currentView === 'branch') this.renderBranchScreen();
+            else if (this.currentView === 'classDetail') this.renderClassDetailScreen();
+            console.log("⚡ 25 Sınıf ve tüm öğrenci verileri yüklendi!");
         } catch (e) {
             console.error("Supabase seed error:", e);
         }
@@ -2613,7 +2984,7 @@ class AppState {
                 ["PARS YABANCI DİL KURSLARI - ÖĞRENCİ YOKLAMA VE TAKİP RAPORU"],
                 [""],
                 ["Şube:", branch ? branch.name : "", "", "Rapor Tarihi:", this.selectedDate],
-                ["Sınıf:", currentClass.name, "", "Yoklama Yapan Öğretmen:", this.data.currentUser?.name || currentClass.teacher],
+                ["Sınıf:", currentClass.name, "", "Yoklama Yapan Öğretmen:", this.data.currentUser ? this.data.currentUser.name : (currentClass.teacher || "Dönüşümlü Öğretmen")],
                 ["Seviye:", currentClass.level, "", "Ders Saatleri:", currentClass.schedule || "Belirtilmedi"],
                 ["Toplam Öğrenci:", classStudents.length, "Katılan (Geldi):", presentCount, "Katılmayan (Gelmedi):", absentCount, "Katılım Oranı:", `%${rate}`],
                 [""],
