@@ -1283,7 +1283,7 @@ class AppState {
         } else if (tabName === 'sinav') {
             if (btnSinav) btnSinav.className = "px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 transition-all bg-purple-600 text-white shadow-lg shadow-purple-600/30 shrink-0";
             if (panelSinav) panelSinav.classList.remove('hidden');
-            this.renderExamGradesList();
+            await this.renderGradesTab();
         }
 
         if (window.lucide) window.lucide.createIcons();
@@ -1292,118 +1292,177 @@ class AppState {
     // -------------------------------------------------------------
     // 📊 TAB 4: SINAV NOTLARI & ÖDEV ANALİZİ LOGİC
     // -------------------------------------------------------------
-    renderExamGradesList() {
-        const tbody = document.getElementById('examGradesTableBody');
-        if (!tbody) return;
+    async renderGradesTab() {
+        const classId = this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
+        const container = document.getElementById('gradesListContainer') || document.getElementById('gradesTableBody') || document.getElementById('examGradesTableBody');
+        if (!container) return;
 
-        const currentClass = this.data.classes.find(c => c.id === this.selectedClassId);
-        if (!currentClass) return;
+        let list = [];
+        if (supabaseClient && classId) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('exam_grades')
+                    .select('*')
+                    .eq('classId', classId)
+                    .order('createdAt', { ascending: false });
 
-        const branch = this.data.branches.find(b => b.id === currentClass.branchId);
-        const branchName = branch ? branch.name : 'Şube';
+                if (!error && data) {
+                    list = data;
+                }
+            } catch (err) {
+                console.error("Supabase exam_grades fetch error:", err);
+            }
+        }
 
-        const students = this.data.students.filter(s => s.classId === currentClass.id);
-
-        if (students.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="py-12 text-center text-slate-500">
-                        <i data-lucide="bar-chart-3" class="w-10 h-10 mx-auto mb-2 text-slate-600"></i>
-                        <p class="font-medium text-white">Bu Sınıfta Öğrenci Kaydı Bulunamadı</p>
-                    </td>
-                </tr>
+        if (list.length === 0) {
+            container.innerHTML = `
+                <div class="p-8 text-center text-slate-500 bg-slate-900 border border-slate-800 rounded-3xl space-y-3">
+                    <i data-lucide="bar-chart-3" class="w-12 h-12 mx-auto text-slate-700 opacity-40"></i>
+                    <p class="font-medium text-white text-base">Henüz Sınav Notu veya Değerlendirme Girilmedi</p>
+                    <p class="text-xs text-slate-400">Bu sınıf için henüz sınav notu veya öğretmen değerlendirmesi eklenmedi.</p>
+                </div>
             `;
             if (window.lucide) window.lucide.createIcons();
             return;
         }
 
-        const isStudent = this.isStudent();
-        const canEdit = !isStudent; // Teachers and Admin can edit!
-
-        tbody.innerHTML = students.map(student => {
-            const midterm = student.midtermGrade !== undefined && student.midtermGrade !== null ? student.midtermGrade : '-';
-            const final = student.finalGrade !== undefined && student.finalGrade !== null ? student.finalGrade : '-';
-            const analysis = student.hwAnalysis || 'Henüz ödev analizi ve öğretmen değerlendirmesi eklenmedi.';
-            const hasFile = student.fileData && student.fileName;
+        const currentUser = this.data.currentUser;
+        container.innerHTML = list.map(item => {
+            const canEdit = currentUser && (
+                currentUser.role === 'admin' || 
+                (item.authorId && String(currentUser.id) === String(item.authorId)) || 
+                (item.teacherName && currentUser.name && item.teacherName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
+            );
 
             return `
-                <tr class="hover:bg-slate-800/40 transition-colors">
-                    <!-- 1. Öğrenci Adı -->
-                    <td class="py-4 px-6 font-semibold text-white">
-                        <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-purple-400">
-                                ${student.name.split(' ').map(n=>n[0]).join('')}
+                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-4 mb-3 shadow-lg hover:border-purple-500/40 transition-all">
+                    <div class="flex items-center gap-4 flex-1">
+                        <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex flex-col items-center justify-center text-purple-400 font-bold shrink-0">
+                            <span class="text-base leading-none">${item.score !== null && item.score !== undefined ? item.score : '-'}</span>
+                            <span class="text-[10px] text-slate-500 font-normal">Puan</span>
+                        </div>
+                        <div class="space-y-0.5 min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h4 class="text-sm font-bold text-white">${item.studentName || 'Öğrenci'}</h4>
+                                <span class="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-indigo-300 font-medium">${item.examTitle || 'Sınav'}</span>
                             </div>
-                            <span>${student.name}</span>
+                            ${item.feedback ? `<p class="text-xs text-slate-400 leading-relaxed pt-0.5">${item.feedback}</p>` : ''}
+                            <span class="text-[11px] text-slate-500 block pt-1">Ekleyen: <strong class="text-slate-300">${item.teacherName || 'Öğretmen'}</strong></span>
                         </div>
-                    </td>
-
-                    <!-- 2. Şube / Sınıf -->
-                    <td class="py-4 px-4 text-xs font-medium text-slate-300">
-                        <div class="space-y-0.5">
-                            <span class="block text-slate-400">${branchName}</span>
-                            <span class="inline-block px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[11px] font-semibold text-slate-200">
-                                ${currentClass.name}
-                            </span>
-                        </div>
-                    </td>
-
-                    <!-- 3. Dönem Ortası Notu -->
-                    <td class="py-4 px-4 text-center">
-                        <span class="px-3 py-1 rounded-xl bg-purple-500/10 text-purple-300 border border-purple-500/30 text-xs font-bold font-mono">
-                            ${midterm !== '-' ? `${midterm} / 100` : '-'}
+                    </div>
+                    ${canEdit ? `
+                        <button onclick="appState.deleteGrade('${item.id}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors shrink-0" title="Kaydı Sil">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    ` : `
+                        <span class="px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-[10px] text-slate-400 font-medium flex items-center space-x-1 shrink-0" title="Sadece ${item.teacherName || 'ilgili öğretmen'} silebilir">
+                            <i data-lucide="lock" class="w-3 h-3 text-amber-400"></i>
+                            <span>${item.teacherName || 'Öğretmen'}'a Ait</span>
                         </span>
-                    </td>
-
-                    <!-- 4. Sene Sonu Notu -->
-                    <td class="py-4 px-4 text-center">
-                        <span class="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs font-bold font-mono">
-                            ${final !== '-' ? `${final} / 100` : '-'}
-                        </span>
-                    </td>
-
-                    <!-- 5. Ödev Analizi & Yorum (Max 300) -->
-                    <td class="py-4 px-6 text-xs text-slate-300 max-w-xs">
-                        <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-slate-300 leading-relaxed relative">
-                            <i data-lucide="quote" class="w-3.5 h-3.5 text-purple-400 mb-1"></i>
-                            <span>${analysis}</span>
-                            <div class="text-[10px] text-slate-500 mt-1 font-mono text-right">${analysis.length} / 300 karakter</div>
-                        </div>
-                    </td>
-
-                    <!-- 6. Öğrenciye Özel Dosya -->
-                    <td class="py-4 px-6 text-center">
-                        ${hasFile ? `
-                            <button onclick="appState.downloadStudentExamFile('${student.id}')" 
-                                    class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-semibold text-xs transition-all shadow-sm">
-                                <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-purple-400"></i>
-                                <span>📥 Dosyayı İndir</span>
-                            </button>
-                        ` : `
-                            <span class="text-[11px] text-slate-500 font-medium italic">Dosya Yüklenmedi</span>
-                        `}
-                    </td>
-
-                    <!-- 7. İşlemler -->
-                    <td class="py-4 px-6 text-right">
-                        ${canEdit ? `
-                            <button onclick="appState.openEditExamModal('${student.id}')" 
-                                    class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md shadow-purple-600/20 transition-all inline-flex items-center space-x-1.5">
-                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                                <span>Not & Analiz Düzenle</span>
-                            </button>
-                        ` : `
-                            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-sky-950/80 border border-sky-800/80 text-[11px] text-sky-300 font-semibold">
-                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
-                                <span>Salt Okunur</span>
-                            </span>
-                        `}
-                    </td>
-                </tr>
+                    `}
+                </div>
             `;
         }).join('');
 
         if (window.lucide) window.lucide.createIcons();
+    }
+
+    loadGrades() {
+        return this.renderGradesTab();
+    }
+
+    renderExamGradesList() {
+        return this.renderGradesTab();
+    }
+
+    openAddGradeModal() {
+        if (!this.data.currentUser || this.isStudent()) {
+            this.showToast("Öğrenci hesapları not ve değerlendirme ekleyemez!", "warning");
+            return;
+        }
+
+        const select = document.getElementById('modalGradeStudentSelect');
+        if (select) {
+            const currentClassId = this.currentClassId || this.selectedClassId;
+            const students = (this.data.students || []).filter(s => s.classId === currentClassId);
+            select.innerHTML = '<option value="">-- Sınıftaki Öğrenciden Seçin --</option>' + 
+                students.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        document.getElementById('modalGradeStudentName').value = '';
+        document.getElementById('modalGradeExamTitle').value = '';
+        document.getElementById('modalGradeScore').value = '';
+        document.getElementById('modalGradeFeedback').value = '';
+
+        const modal = document.getElementById('gradeModal');
+        if (modal) modal.classList.remove('hidden');
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    closeGradeModal() {
+        const modal = document.getElementById('gradeModal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    async handleGradeSubmit(e) {
+        if (e) e.preventDefault();
+        const studentId = document.getElementById('modalGradeStudentSelect')?.value || '';
+        const studentName = document.getElementById('modalGradeStudentName')?.value.trim() || 'Öğrenci';
+        const examTitle = document.getElementById('modalGradeExamTitle')?.value.trim() || 'Sınav Notu';
+        const score = document.getElementById('modalGradeScore')?.value;
+        const feedback = document.getElementById('modalGradeFeedback')?.value.trim() || '';
+
+        await this.saveGradeModal({
+            studentId,
+            studentName,
+            examTitle,
+            score,
+            feedback
+        });
+    }
+
+    async saveGradeModal(formData) {
+        const classId = this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
+        const currentUser = this.data.currentUser;
+
+        const payload = {
+            id: 'grade-' + Date.now(),
+            classId: classId,
+            studentId: formData.studentId,
+            studentName: formData.studentName,
+            examTitle: formData.examTitle,
+            score: Number(formData.score) || 0,
+            feedback: formData.feedback || '',
+            teacherName: currentUser ? (currentUser.name || currentUser.username) : 'Öğretmen',
+            authorId: currentUser ? String(currentUser.id) : null,
+            createdAt: new Date().toISOString()
+        };
+
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('exam_grades').upsert([payload]);
+            if (error) {
+                console.error('Not kaydedilemedi:', error);
+                this.showToast('Hata: ' + error.message, 'error');
+                return;
+            }
+        }
+
+        this.showToast('Not / Değerlendirme kaydı başarıyla eklendi.', 'success');
+        this.closeGradeModal();
+        await this.renderGradesTab();
+    }
+
+    async deleteGrade(id) {
+        if (!confirm('Bu not kaydını silmek istediğinize emin misiniz?')) return;
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('exam_grades').delete().eq('id', id);
+            if (error) {
+                this.showToast('Silme hatası: ' + error.message, 'error');
+                return;
+            }
+        }
+        this.showToast('Not kaydı silindi.', 'info');
+        await this.renderGradesTab();
     }
 
     openEditExamModal(studentId) {
