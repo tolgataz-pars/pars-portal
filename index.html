@@ -392,32 +392,15 @@
                     <div>
                         <h3 class="font-heading text-lg font-bold text-white flex items-center space-x-2">
                             <i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i>
-                            <span>Sınav Notları, Dönem Değerlendirmesi ve Ödev Analizi</span>
+                            <span>Sınav Notları & Beceri Analizleri</span>
                         </h3>
-                        <p class="text-xs text-slate-400 mt-1">Öğrencilerin dönem ortası, sene sonu notları, en fazla 300 karakterlik ödev analizleri ve özel indirilebilir dosyaları.</p>
+                        <p class="text-xs text-slate-400 mt-1">Öğrencilerin Reading, Listening, Writing, Speaking beceri notları, analizleri ve genel ortalamaları.</p>
                     </div>
                 </div>
 
-                <!-- EXAM GRADES & HOMEWORK ANALYSIS TABLE -->
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse" id="examGradesTable">
-                            <thead>
-                                <tr class="bg-slate-950/80 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                    <th class="py-4 px-6">Öğrenci</th>
-                                    <th class="py-4 px-4">Şube / Sınıf</th>
-                                    <th class="py-4 px-4 text-center">Dönem Ortası</th>
-                                    <th class="py-4 px-4 text-center">Sene Sonu</th>
-                                    <th class="py-4 px-6">Ödev Analizi & Yorum (Max 300 Karakter)</th>
-                                    <th class="py-4 px-6 text-center">Öğrenciye Özel Dosya</th>
-                                    <th class="py-4 px-6 text-right">İşlem</th>
-                                </tr>
-                            </thead>
-                            <tbody id="examGradesTableBody" class="divide-y divide-slate-800/60 text-sm">
-                                <!-- Dynamic Exam & Analysis Rows -->
-                            </tbody>
-                        </table>
-                    </div>
+                <!-- STUDENT SKILL CARDS CONTAINER -->
+                <div id="gradesListContainer" class="space-y-6">
+                    <!-- Dynamic Student Skill Cards & Tables rendered here -->
                 </div>
             </div>
         </section>
@@ -955,6 +938,7 @@
 
             <form id="examForm" onsubmit="appState.handleSaveExam(event)" class="space-y-4">
                 <input type="hidden" id="modalExamStudentId">
+                <input type="hidden" id="modalExamSkill">
 
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Öğrenci Adı</label>
@@ -965,12 +949,12 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Dönem Ortası Notu (0 - 100)</label>
-                        <input type="number" id="modalExamMidterm" min="0" max="100" placeholder="ör: 85"
+                        <input type="number" id="modalExamMidterm" min="0" max="100" placeholder="0-100"
                                class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-purple-500">
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Sene Sonu Notu (0 - 100)</label>
-                        <input type="number" id="modalExamFinal" min="0" max="100" placeholder="ör: 90"
+                        <input type="number" id="modalExamFinal" min="0" max="100" placeholder="0-100"
                                class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-purple-500">
                     </div>
                 </div>
@@ -1000,6 +984,60 @@
 
                 <div class="flex justify-end space-x-3 pt-4 border-t border-slate-800">
                     <button type="button" onclick="appState.closeExamModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-semibold transition-all">
+                        İptal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold shadow-lg shadow-purple-600/30 transition-all">
+                        Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: YENİ NOT / DEĞERLENDİRME MODALI -->
+    <div id="gradeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6 relative animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <h3 class="font-heading text-xl font-bold text-white flex items-center space-x-2">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i>
+                    <span>Yeni Sınav Notu / Değerlendirme Ekle</span>
+                </h3>
+                <button onclick="appState.closeGradeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="gradeForm" onsubmit="appState.handleGradeSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Öğrenci</label>
+                    <select id="modalGradeStudentSelect" onchange="document.getElementById('modalGradeStudentName').value = this.options[this.selectedIndex].text"
+                            class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-purple-500 mb-2">
+                        <option value="">-- Sınıftaki Öğrenciden Seçin --</option>
+                    </select>
+                    <input type="text" id="modalGradeStudentName" placeholder="Öğrenci Adı (Veya manuel yazın)" required
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-purple-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Sınav / Değerlendirme Adı</label>
+                    <input type="text" id="modalGradeExamTitle" placeholder="ör: Vize Sınavı, Dönem Sonu Notu" required
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-purple-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Puan / Not (0 - 100)</label>
+                    <input type="number" id="modalGradeScore" min="0" max="100" placeholder="ör: 85" required
+                           class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-purple-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Öğretmen Görüşü / Geri Bildirim</label>
+                    <textarea id="modalGradeFeedback" rows="3" placeholder="Öğrenci hakkında öğretmen değerlendirmesi..."
+                              class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-purple-500"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="appState.closeGradeModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-sm font-semibold transition-all">
                         İptal
                     </button>
                     <button type="submit" class="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold shadow-lg shadow-purple-600/30 transition-all">

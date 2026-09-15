@@ -504,9 +504,13 @@ class AppState {
         }
 
         if (user) {
+            const currentTeacher = (this.data?.teachers || this.data?.users || []).find(t => t.id === this.data.currentUser?.id || t.username === this.data.currentUser?.username);
+            const userAvatar = currentTeacher?.avatar || this.data.currentUser?.avatar || 'assets/avatar.png';
+            const userBadge = currentTeacher?.branchAccess || currentTeacher?.branchPermission || this.data.currentUser?.branchAccess || this.data.currentUser?.branchPermission || 'Tüm Şubeler Öğretmeni';
+
             const isAdmin = user.role === 'admin';
             const isStudent = user.role === 'student';
-            const roleBadge = isAdmin ? 'Yönetici (Admin)' : isStudent ? '🎓 Öğrenci (Salt Okunur)' : (user.title || 'Öğretmen');
+            const roleBadge = isAdmin ? 'Yönetici (Admin)' : isStudent ? '🎓 Öğrenci (Salt Okunur)' : (userBadge || user.title || 'Öğretmen');
             const badgeColor = isAdmin ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
                                isStudent ? 'bg-sky-500/10 text-sky-300 border-sky-500/30' :
                                'bg-teal-500/10 text-teal-300 border-teal-500/30';
@@ -515,7 +519,7 @@ class AppState {
 
             container.innerHTML = `
                 <div class="flex items-center space-x-3 bg-slate-900/90 p-1.5 pr-4 rounded-full border border-slate-800 shadow-md">
-                    <img src="${user.avatar || 'assets/avatar.png'}" alt="${user.name}" class="w-9 h-9 rounded-full object-cover border-2 ${avatarBorder}">
+                    <img src="${userAvatar}" alt="${user.name}" class="w-9 h-9 rounded-full object-cover border-2 ${avatarBorder}">
                     <div class="hidden sm:block text-left">
                         <div class="text-xs font-bold text-white flex items-center space-x-1">
                             <span>${user.name}</span>
@@ -697,7 +701,11 @@ class AppState {
     // -------------------------------------------------------------
     renderLandingScreen() {
         const studentsList = this.data?.students || [];
-        const uniqueStudents = new Set(studentsList.map(s => s.id || s.name)).size;
+        const totalStudentsCount = (this.data?.branches || []).reduce((acc, b) => {
+          const branchStudents = studentsList.filter(s => s.branchId === b.id || s.branch === b.id || s.branch === b.name);
+          return acc + branchStudents.length;
+        }, 0) || studentsList.length;
+
         const uniqueClasses = Array.from(
           new Map(
             (this.data?.classes || []).map(c => [
@@ -713,7 +721,7 @@ class AppState {
         if (landingTotalClassesEl) landingTotalClassesEl.textContent = `${totalClasses} Eğitim Sınıfı`;
 
         const landingTotalStudentsEl = document.getElementById('landingTotalStudents');
-        if (landingTotalStudentsEl) landingTotalStudentsEl.textContent = `${uniqueStudents} Kayıtlı Öğrenci`;
+        if (landingTotalStudentsEl) landingTotalStudentsEl.textContent = `${totalStudentsCount} Kayıtlı Öğrenci`;
 
         const container = document.getElementById('branchCardsContainer');
         if (container && this.data.branches) {
@@ -1723,42 +1731,37 @@ class AppState {
             }
         }
 
-        const midInput = document.getElementById('modalMidtermScore') || document.getElementById('modalExamMidterm');
-        const finInput = document.getElementById('modalFinalScore') || document.getElementById('modalExamFinal');
-        const anaInput = document.getElementById('modalHomeworkAnalysis') || document.getElementById('modalExamHwAnalysis');
-        const fileInput = document.getElementById('modalGradeFileUrl');
-
-        const midtermVal = midInput && midInput.value.trim() !== '' ? Number(midInput.value) : null;
-        const finalVal = finInput && finInput.value.trim() !== '' ? Number(finInput.value) : null;
-        const analysisVal = anaInput ? anaInput.value.trim() : '';
-        const fileUrlVal = (fileInput ? fileInput.value.trim() : '') || (this.pendingExamFileData || '');
+        const midVal = document.getElementById('modalMidtermScore')?.value ?? document.getElementById('modalExamMidterm')?.value;
+        const finVal = document.getElementById('modalFinalScore')?.value ?? document.getElementById('modalExamFinal')?.value;
+        const anaVal = (document.getElementById('modalHomeworkAnalysis')?.value ?? document.getElementById('modalExamHwAnalysis')?.value) || '';
+        const fileVal = document.getElementById('modalGradeFileUrl')?.value || (this.pendingExamFileData || '');
         const fileNameVal = (this.pendingExamFileName || '').trim();
 
         const payload = {
             id: `grade_${this.currentEditingGrade.studentId}_${this.currentEditingGrade.skill}`,
             classId: this.currentEditingGrade.classId,
-            studentId: String(this.currentEditingGrade.studentId),
+            studentId: this.currentEditingGrade.studentId,
             studentName: this.currentEditingGrade.studentName,
             skill: this.currentEditingGrade.skill,
-            midtermScore: midtermVal,
-            finalScore: finalVal,
-            homeworkAnalysis: analysisVal,
-            fileUrl: fileUrlVal,
+            midtermScore: (midVal !== '' && midVal !== null && midVal !== undefined) ? Number(midVal) : null,
+            finalScore: (finVal !== '' && finVal !== null && finVal !== undefined) ? Number(finVal) : null,
+            homeworkAnalysis: anaVal.trim(),
+            fileUrl: fileVal.trim(),
             fileName: fileNameVal,
-            teacherName: this.data.currentUser?.name || 'Öğretmen',
-            teacherId: String(this.data.currentUser?.id || ''),
+            teacherName: this.data.currentUser?.name || 'Elif Sanağ',
+            teacherId: String(this.data.currentUser?.id || 'teacher-elif'),
             updatedAt: new Date().toISOString()
         };
 
         if (supabaseClient) {
             const { error } = await supabaseClient.from('exam_grades').upsert([payload]);
             if (error) {
-                alert("Kayıt hatası: " + error.message);
+                alert("Supabase Güncelleme Hatası: " + error.message);
                 return;
             }
         }
 
-        // Modalı kapat
+        // Modalı gizle
         const modal = document.getElementById('gradeModal') || document.getElementById('examModal') || document.getElementById('examGradeModal');
         if (modal) modal.classList.add('hidden');
 
