@@ -613,6 +613,54 @@ class AppState {
         }, 50);
     }
 
+    deduplicateClasses(classes) {
+        if (!Array.isArray(classes)) return [];
+        const seenMap = new Map();
+        const result = [];
+        classes.forEach(c => {
+            if (!c || !c.id) return;
+            const nameKey = `${c.branchId || ''}_${(c.name || '').trim().toLowerCase()}`;
+            if (!seenMap.has(c.id) && !seenMap.has(nameKey)) {
+                seenMap.set(c.id, true);
+                seenMap.set(nameKey, true);
+                result.push(c);
+            }
+        });
+        return result;
+    }
+
+    deduplicateStudents(students) {
+        if (!Array.isArray(students)) return [];
+        const seenMap = new Map();
+        const result = [];
+        students.forEach(s => {
+            if (!s || !s.id) return;
+            const nameKey = `${s.classId || ''}_${(s.name || '').trim().toLowerCase()}`;
+            if (!seenMap.has(s.id) && !seenMap.has(nameKey)) {
+                seenMap.set(s.id, true);
+                seenMap.set(nameKey, true);
+                result.push(s);
+            }
+        });
+        return result;
+    }
+
+    deduplicateUsers(users) {
+        if (!Array.isArray(users)) return [];
+        const seenMap = new Map();
+        const result = [];
+        users.forEach(u => {
+            if (!u || !u.id) return;
+            const userKey = (u.username || '').trim().toLowerCase();
+            if (!seenMap.has(u.id) && !seenMap.has(userKey)) {
+                seenMap.set(u.id, true);
+                seenMap.set(userKey, true);
+                result.push(u);
+            }
+        });
+        return result;
+    }
+
     // SUPABASE CLOUD DATABASE SYNC & PERSISTENCE
     async syncDataFromSupabase() {
         if (!supabaseClient) return;
@@ -639,17 +687,17 @@ class AppState {
             let hasUsers = false;
 
             if (usersRes.data && usersRes.data.length > 0) {
-                this.data.users = usersRes.data;
+                this.data.users = this.deduplicateUsers(usersRes.data);
                 hasUsers = true;
             }
             if (branchesRes.data && branchesRes.data.length > 0) {
                 this.data.branches = branchesRes.data;
             }
             if (classesRes.data && classesRes.data.length > 0) {
-                this.data.classes = classesRes.data;
+                this.data.classes = this.deduplicateClasses(classesRes.data);
             }
             if (studentsRes.data && studentsRes.data.length > 0) {
-                this.data.students = studentsRes.data;
+                this.data.students = this.deduplicateStudents(studentsRes.data);
             }
             if (curriculumRes.data && curriculumRes.data.length > 0) {
                 this.data.curriculum = curriculumRes.data;
@@ -661,6 +709,11 @@ class AppState {
                 const setting = exportRes.data[0];
                 this.data.exportSettings = { savePath: setting.savePath || setting.save_path || 'C:\\Pars_Yoklama_Raporlari\\' };
             }
+
+            // Mükerrer verileri temizle ve tekil hale getir
+            this.data.classes = this.deduplicateClasses(this.data.classes);
+            this.data.students = this.deduplicateStudents(this.data.students);
+            this.data.users = this.deduplicateUsers(this.data.users);
 
             // Tohumlama (Seed) YALNIZCA veritabanı tamamen boşsa veya eski varsayılan sınıflar varsa çalışır!
             const needsSeed = !hasUsers || !classesRes.data || classesRes.data.length < 20 || !classesRes.data.some(c => c.id === 'cls-als-1');
@@ -692,8 +745,8 @@ class AppState {
                 supabaseClient.from('homeworks').upsert(INITIAL_DATA.homeworks),
                 supabaseClient.from('export_settings').upsert([{ id: 'main', savePath: 'C:\\Pars_Yoklama_Raporlari\\' }])
             ]);
-            this.data.classes = JSON.parse(JSON.stringify(INITIAL_DATA.classes));
-            this.data.students = JSON.parse(JSON.stringify(INITIAL_DATA.students));
+            this.data.classes = this.deduplicateClasses(JSON.parse(JSON.stringify(INITIAL_DATA.classes)));
+            this.data.students = this.deduplicateStudents(JSON.parse(JSON.stringify(INITIAL_DATA.students)));
             this.saveLocalData();
             this.renderAuthHeader();
             if (this.currentView === 'landing') this.renderLandingScreen();
@@ -731,6 +784,16 @@ class AppState {
 
         if (!data) {
             data = JSON.parse(JSON.stringify(INITIAL_DATA));
+        }
+
+        if (data.classes) {
+            data.classes = this.deduplicateClasses(data.classes);
+        }
+        if (data.students) {
+            data.students = this.deduplicateStudents(data.students);
+        }
+        if (data.users) {
+            data.users = this.deduplicateUsers(data.users);
         }
 
         if (!data.curriculum) {
@@ -2260,7 +2323,7 @@ class AppState {
         if (students.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="py-12 text-center text-slate-500">
+                    <td colspan="5" class="py-12 text-center text-slate-500">
                         <i data-lucide="user-x" class="w-10 h-10 mx-auto mb-2 text-slate-600"></i>
                         <p class="font-medium text-white">Öğrenci Kaydı Bulunamadı</p>
                         <p class="text-xs text-slate-400 mt-1">Bu sınıfta kayıtlı öğrenci yok veya filtrelerle eşleşmedi.</p>
