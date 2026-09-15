@@ -1294,13 +1294,23 @@ class AppState {
     // -------------------------------------------------------------
     async renderGradesTab() {
         const currentClassId = this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
-        const tbody = document.getElementById('examGradesTableBody');
-        if (!tbody) return;
+        const container = document.getElementById('gradesListContainer') || document.getElementById('examGradesTableBody');
+        if (!container) return;
 
         const currentClass = (this.data.classes || []).find(c => c.id === currentClassId);
         const branch = currentClass ? (this.data.branches || []).find(b => b.id === currentClass.branchId) : null;
         const branchName = branch ? branch.name : 'Şube';
         const className = currentClass ? currentClass.name : 'Sınıf';
+
+        const students = (this.data.students || []).filter(s => s.classId === currentClassId);
+
+        // Fixed Skills list
+        const SKILLS = [
+            { key: 'Reading', name: 'Reading (Okuma)', icon: 'book-open', badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
+            { key: 'Listening', name: 'Listening (Dinleme)', icon: 'headphones', badge: 'bg-teal-500/10 text-teal-400 border-teal-500/20' },
+            { key: 'Writing', name: 'Writing (Yazma)', icon: 'file-text', badge: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
+            { key: 'Speaking', name: 'Speaking (Konuşma)', icon: 'mic', badge: 'bg-purple-500/10 text-purple-400 border-purple-500/20' }
+        ];
 
         // 1. Fetch from Supabase exam_grades table for currentClassId
         let gradesMap = new Map();
@@ -1313,155 +1323,202 @@ class AppState {
 
                 if (!error && gradesData) {
                     gradesData.forEach(g => {
-                        if (g.studentId) gradesMap.set(g.studentId, g);
+                        const skillKey = g.skill || 'Reading';
+                        gradesMap.set(`grade_${g.studentId}_${skillKey}`, g);
                     });
                 }
             } catch (err) {
                 console.error("Supabase exam_grades fetch error:", err);
             }
         }
-
-        // 2. Fetch from Supabase students table to keep student notes in sync across browsers
-        let studentsMap = new Map();
-        if (supabaseClient && currentClassId) {
-            try {
-                const { data: studentsData, error: studErr } = await supabaseClient
-                    .from('students')
-                    .select('*')
-                    .eq('classId', currentClassId);
-
-                if (!studErr && studentsData) {
-                    studentsData.forEach(s => {
-                        studentsMap.set(s.id, s);
-                        const localStudent = (this.data.students || []).find(ls => ls.id === s.id);
-                        if (localStudent) {
-                            if (s.midtermGrade !== undefined && s.midtermGrade !== null) localStudent.midtermGrade = s.midtermGrade;
-                            if (s.finalGrade !== undefined && s.finalGrade !== null) localStudent.finalGrade = s.finalGrade;
-                            if (s.hwAnalysis) localStudent.hwAnalysis = s.hwAnalysis;
-                            if (s.fileData) {
-                                localStudent.fileData = s.fileData;
-                                localStudent.fileName = s.fileName;
-                                localStudent.fileSize = s.fileSize;
-                            }
-                        }
-                    });
-                }
-            } catch (err) {
-                console.error("Supabase students fetch error:", err);
-            }
-        }
-
-        const students = (this.data.students || []).filter(s => s.classId === currentClassId);
+        this.data.skillsGradesMap = gradesMap;
 
         if (students.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="py-12 text-center text-slate-500">
-                        <i data-lucide="bar-chart-3" class="w-10 h-10 mx-auto mb-2 text-slate-600 opacity-40"></i>
-                        <p class="font-medium text-white">Bu Sınıfta Öğrenci Kaydı Bulunamadı</p>
-                    </td>
-                </tr>
+            container.innerHTML = `
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center text-slate-500 space-y-3">
+                    <i data-lucide="bar-chart-3" class="w-12 h-12 mx-auto text-slate-700 opacity-40"></i>
+                    <p class="font-medium text-white text-base">Bu Sınıfta Öğrenci Kaydı Bulunamadı</p>
+                    <p class="text-xs text-slate-400">Not ve beceri analizi eklemek için önce sınıfa öğrenci kaydı oluşturunuz.</p>
+                </div>
             `;
             if (window.lucide) window.lucide.createIcons();
             return;
         }
 
-        const isStudentUser = this.isStudent();
-        const canEdit = !isStudentUser; // Both Admin AND Teachers can edit!
+        const currentUser = this.data.currentUser || {};
+        const isAdmin = this.isAdmin();
 
-        tbody.innerHTML = students.map(s => {
-            const g = gradesMap.get(s.id);
-            const dbStudent = studentsMap.get(s.id);
+        container.innerHTML = students.map(student => {
+            let midtermSum = 0;
+            let finalSum = 0;
+            let countedMidterms = 0;
+            let countedFinals = 0;
 
-            const midterm = (dbStudent && dbStudent.midtermGrade !== undefined && dbStudent.midtermGrade !== null) ? dbStudent.midtermGrade :
-                            ((g && (g.midtermScore !== undefined ? g.midtermScore : g.score)) ?? (s.midtermGrade !== undefined && s.midtermGrade !== null ? s.midtermGrade : 80));
+            const rowsHtml = SKILLS.map(sk => {
+                const gradeKey = `grade_${student.id}_${sk.key}`;
+                const item = gradesMap.get(gradeKey) || {};
 
-            const final = (dbStudent && dbStudent.finalGrade !== undefined && dbStudent.finalGrade !== null) ? dbStudent.finalGrade :
-                          ((g && (g.finalScore !== undefined ? g.finalScore : g.score)) ?? (s.finalGrade !== undefined && s.finalGrade !== null ? s.finalGrade : 85));
+                const mScore = item.midtermScore !== undefined && item.midtermScore !== null ? Number(item.midtermScore) : 0;
+                const fScore = item.finalScore !== undefined && item.finalScore !== null ? Number(item.finalScore) : 0;
+                const comment = item.homeworkAnalysis || 'Henüz değerlendirme eklenmedi.';
+                const fileName = item.fileName || '';
+                const fileUrl = item.fileUrl || '';
+                const hasFile = Boolean(fileName || fileUrl);
 
-            const analysis = (dbStudent && dbStudent.hwAnalysis) ||
-                             (g && (g.homeworkAnalysis || g.feedback)) ||
-                             s.hwAnalysis ||
-                             'Henüz ödev analizi ve öğretmen değerlendirmesi eklenmedi.';
+                if (mScore > 0) {
+                    midtermSum += mScore;
+                    countedMidterms++;
+                }
+                if (fScore > 0) {
+                    finalSum += fScore;
+                    countedFinals++;
+                }
 
-            const fileName = (dbStudent && dbStudent.fileName) || (g && (g.fileName || g.fileUrl)) || s.fileName;
-            const fileData = (dbStudent && dbStudent.fileData) || (g && (g.fileData || g.fileUrl)) || s.fileData;
-            const hasFile = Boolean(fileName || fileData);
+                // Authorization logic per role & skill
+                const isOwner = item.teacherId && String(item.teacherId) === String(currentUser.id);
+                const isOwnerName = item.teacherName && currentUser.name && item.teacherName.trim().toLowerCase() === currentUser.name.trim().toLowerCase();
+                const isTeacherSkillMatch = currentUser.role === 'teacher' && (
+                    !currentUser.skill || 
+                    currentUser.skill === 'Tüm Beceriler' || 
+                    currentUser.skill.toLowerCase().includes(sk.key.toLowerCase())
+                );
+
+                const canEditSkill = !this.isStudent() && (
+                    isAdmin ||
+                    isOwner ||
+                    isOwnerName ||
+                    isTeacherSkillMatch
+                );
+
+                return `
+                    <tr class="hover:bg-slate-800/40 transition-colors border-b border-slate-800/60 text-xs">
+                        <!-- Beceri Rozeti -->
+                        <td class="py-3 px-4 font-semibold text-white">
+                            <span class="px-2.5 py-1 rounded-lg border text-[11px] font-semibold flex items-center space-x-1.5 w-fit ${sk.badge}">
+                                <i data-lucide="${sk.icon}" class="w-3.5 h-3.5"></i>
+                                <span>${sk.name}</span>
+                            </span>
+                        </td>
+
+                        <!-- Dönem Ortası -->
+                        <td class="py-3 px-4 text-center">
+                            <span class="px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/20 font-mono font-bold">
+                                ${mScore > 0 ? `${mScore} / 100` : '-'}
+                            </span>
+                        </td>
+
+                        <!-- Sene Sonu -->
+                        <td class="py-3 px-4 text-center">
+                            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono font-bold">
+                                ${fScore > 0 ? `${fScore} / 100` : '-'}
+                            </span>
+                        </td>
+
+                        <!-- Ödev Analizi & Yorum -->
+                        <td class="py-3 px-4 text-slate-300 max-w-xs">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-slate-300 leading-relaxed text-[11px]">
+                                ${comment}
+                            </div>
+                        </td>
+
+                        <!-- Özel Dosya -->
+                        <td class="py-3 px-4 text-center">
+                            ${hasFile ? `
+                                <button onclick="appState.downloadStudentExamFile('${student.id}', '${sk.key}')" 
+                                        class="px-2.5 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-semibold text-[11px] transition-all inline-flex items-center space-x-1">
+                                    <i data-lucide="download-cloud" class="w-3 h-3"></i>
+                                    <span class="truncate max-w-[100px]" title="${fileName}">${fileName || 'Dosya'}</span>
+                                </button>
+                            ` : `
+                                <span class="text-[11px] text-slate-500 italic">Dosya Yok</span>
+                            `}
+                        </td>
+
+                        <!-- İşlem Butonu -->
+                        <td class="py-3 px-4 text-right">
+                            ${canEditSkill ? `
+                                <button onclick="appState.openEditExamModal('${student.id}', '${sk.key}')" 
+                                        class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md shadow-purple-600/20 transition-all inline-flex items-center space-x-1">
+                                    <i data-lucide="edit-3" class="w-3 h-3"></i>
+                                    <span>Düzenle</span>
+                                </button>
+                            ` : `
+                                <span class="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-[10px] text-slate-500 font-medium inline-flex items-center space-x-1" title="Bu beceriyi sadece yetkili öğretmen düzenleyebilir">
+                                    <i data-lucide="lock" class="w-2.5 h-2.5 text-amber-400"></i>
+                                    <span>Salt Okunur</span>
+                                </span>
+                            `}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            const avgMidterm = countedMidterms > 0 ? Math.round(midtermSum / 4) : '-';
+            const avgFinal = countedFinals > 0 ? Math.round(finalSum / 4) : '-';
 
             return `
-                <tr class="hover:bg-slate-800/40 transition-colors">
-                    <!-- 1. Öğrenci Adı -->
-                    <td class="py-4 px-6 font-semibold text-white">
+                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+                    <!-- Student Header -->
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
                         <div class="flex items-center space-x-3">
-                            <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-purple-400">
-                                ${(s.name || 'Ö').split(' ').map(n=>n[0]).join('')}
+                            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-900 to-indigo-900 border border-purple-500/30 flex items-center justify-center text-sm font-extrabold text-purple-300 shadow-md">
+                                ${(student.name || 'Ö').split(' ').map(n=>n[0]).join('')}
                             </div>
-                            <span>${s.name}</span>
+                            <div>
+                                <h4 class="font-heading text-base font-bold text-white flex items-center space-x-2">
+                                    <span>${student.name}</span>
+                                </h4>
+                                <div class="flex items-center space-x-2 mt-0.5 text-xs text-slate-400">
+                                    <span>${branchName}</span>
+                                    <span>&bull;</span>
+                                    <span class="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-[10px] font-semibold text-teal-400">${className}</span>
+                                </div>
+                            </div>
                         </div>
-                    </td>
 
-                    <!-- 2. Şube / Sınıf -->
-                    <td class="py-4 px-4 text-xs font-medium text-slate-300">
-                        <div class="space-y-0.5">
-                            <span class="block text-slate-400">${branchName}</span>
-                            <span class="inline-block px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[11px] font-semibold text-slate-200">
-                                ${className}
+                        <div class="flex items-center space-x-2">
+                            <span class="px-3 py-1 rounded-xl bg-purple-500/10 text-purple-300 border border-purple-500/20 text-xs font-semibold">
+                                4 Temel Beceri Analizi
                             </span>
                         </div>
-                    </td>
+                    </div>
 
-                    <!-- 3. Dönem Ortası Notu -->
-                    <td class="py-4 px-4 text-center">
-                        <span class="px-3 py-1 rounded-xl bg-purple-500/10 text-purple-300 border border-purple-500/30 text-xs font-bold font-mono">
-                            ${midterm !== '-' ? `${midterm} / 100` : '-'}
-                        </span>
-                    </td>
+                    <!-- Skills Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-950/80 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                    <th class="py-3 px-4">Beceri</th>
+                                    <th class="py-3 px-4 text-center">Dönem Ortası</th>
+                                    <th class="py-3 px-4 text-center">Sene Sonu</th>
+                                    <th class="py-3 px-4">Ödev Analizi & Yorum (Max 300)</th>
+                                    <th class="py-3 px-4 text-center">Dosya / Materyal</th>
+                                    <th class="py-3 px-4 text-right">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
 
-                    <!-- 4. Sene Sonu Notu -->
-                    <td class="py-4 px-4 text-center">
-                        <span class="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs font-bold font-mono">
-                            ${final !== '-' ? `${final} / 100` : '-'}
-                        </span>
-                    </td>
-
-                    <!-- 5. Ödev Analizi & Yorum (Max 300) -->
-                    <td class="py-4 px-6 text-xs text-slate-300 max-w-xs">
-                        <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-slate-300 leading-relaxed relative">
-                            <i data-lucide="quote" class="w-3.5 h-3.5 text-purple-400 mb-1"></i>
-                            <span>${analysis}</span>
-                            <div class="text-[10px] text-slate-500 mt-1 font-mono text-right">${analysis.length} / 300 karakter</div>
-                        </div>
-                    </td>
-
-                    <!-- 6. Öğrenciye Özel Dosya -->
-                    <td class="py-4 px-6 text-center">
-                        ${hasFile ? `
-                            <button onclick="appState.downloadStudentExamFile('${s.id}')" 
-                                    class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-semibold text-xs transition-all shadow-sm">
-                                <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-purple-400"></i>
-                                <span>📥 Dosyayı İndir</span>
-                            </button>
-                        ` : `
-                            <span class="text-[11px] text-slate-500 font-medium italic">Dosya Yüklenmedi</span>
-                        `}
-                    </td>
-
-                    <!-- 7. İşlemler -->
-                    <td class="py-4 px-6 text-right">
-                        ${canEdit ? `
-                            <button onclick="appState.openEditExamModal('${s.id}')" 
-                                    class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md shadow-purple-600/20 transition-all inline-flex items-center space-x-1.5">
-                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                                <span>Not & Analiz Düzenle</span>
-                            </button>
-                        ` : `
-                            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-sky-950/80 border border-sky-800/80 text-[11px] text-sky-300 font-semibold">
-                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
-                                <span>Salt Okunur</span>
-                            </span>
-                        `}
-                    </td>
-                </tr>
+                                <!-- Genel Ortalama Satırı (Otomatik Hesaplanan) -->
+                                <tr class="bg-slate-950/90 font-bold border-t-2 border-purple-500/40 text-xs text-white">
+                                    <td class="py-3.5 px-4 flex items-center space-x-2">
+                                        <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i>
+                                        <span class="text-emerald-400 font-extrabold">Genel Ortalama (Otomatik)</span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center font-mono text-emerald-400 text-sm">
+                                        ${avgMidterm !== '-' ? `${avgMidterm} / 100` : '-'}
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center font-mono text-emerald-400 text-sm">
+                                        ${avgFinal !== '-' ? `${avgFinal} / 100` : '-'}
+                                    </td>
+                                    <td colspan="3" class="py-3.5 px-4 text-right text-[11px] text-slate-400 font-medium italic">
+                                        4 becerinin dönem ortası ve sene sonu not aritmetik ortalamasıdır.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             `;
         }).join('');
 
@@ -1480,7 +1537,7 @@ class AppState {
         return this.renderGradesTab();
     }
 
-    openEditExamModal(studentId) {
+    openEditExamModal(studentId, skill = 'Reading') {
         if (this.isStudent()) {
             this.showToast("Öğrenciler not ve analiz değiştiremez!", "warning");
             return;
@@ -1489,17 +1546,25 @@ class AppState {
         const student = (this.data.students || []).find(s => s.id === studentId);
         if (!student) return;
 
-        this.pendingExamFileData = student.fileData || null;
-        this.pendingExamFileName = student.fileName || null;
-        this.pendingExamFileSize = student.fileSize || null;
+        const gradeKey = `grade_${studentId}_${skill}`;
+        const item = (this.data.skillsGradesMap && this.data.skillsGradesMap.get(gradeKey)) || {};
+
+        this.pendingExamFileData = item.fileUrl || null;
+        this.pendingExamFileName = item.fileName || null;
+        this.pendingExamFileSize = null;
 
         document.getElementById('modalExamStudentId').value = student.id;
-        document.getElementById('modalExamStudentName').value = student.name;
-        document.getElementById('modalExamMidterm').value = student.midtermGrade !== undefined && student.midtermGrade !== null ? student.midtermGrade : 85;
-        document.getElementById('modalExamFinal').value = student.finalGrade !== undefined && student.finalGrade !== null ? student.finalGrade : 90;
-        document.getElementById('modalExamHwAnalysis').value = student.hwAnalysis || '';
+        if (document.getElementById('modalExamSkill')) {
+            document.getElementById('modalExamSkill').value = skill;
+        }
+        document.getElementById('modalExamStudentName').value = `${student.name} — ${skill}`;
+        document.getElementById('examModalTitle').innerHTML = `<i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-400"></i><span>${student.name} — ${skill} Notu & Analizi</span>`;
 
-        const fileNameDisplay = student.fileName ? `Yüklü: ${student.fileName} (${student.fileSize || ''})` : 'Henüz dosya yüklenmedi';
+        document.getElementById('modalExamMidterm').value = item.midtermScore !== undefined && item.midtermScore !== null && item.midtermScore !== 0 ? item.midtermScore : '';
+        document.getElementById('modalExamFinal').value = item.finalScore !== undefined && item.finalScore !== null && item.finalScore !== 0 ? item.finalScore : '';
+        document.getElementById('modalExamHwAnalysis').value = item.homeworkAnalysis || '';
+
+        const fileNameDisplay = item.fileName ? `Yüklü: ${item.fileName}` : 'Henüz dosya yüklenmedi';
         document.getElementById('modalExamFileNameDisplay').textContent = fileNameDisplay;
 
         this.updateCharCounter();
@@ -1544,74 +1609,84 @@ class AppState {
         reader.readAsDataURL(file);
     }
 
-    async saveStudentExamAnalysis(targetStudentId, payloadData) {
-        const student = (this.data.students || []).find(s => s.id === targetStudentId);
-        if (!student) return;
+    async saveSkillGradeModal(studentId, skill, formData) {
+        const student = (this.data.students || []).find(s => s.id === studentId);
+        const studentName = student ? student.name : 'Öğrenci';
+        const currentClassId = this.currentClassId || (student && student.classId) || this.selectedClassId;
+        const currentUser = this.data.currentUser || {};
 
-        const currentClassId = this.currentClassId || student.classId || this.selectedClassId;
-        const currentUser = this.data.currentUser;
-
-        const midtermScore = payloadData.midtermScore !== undefined ? payloadData.midtermScore : (payloadData.midtermGrade !== undefined ? payloadData.midtermGrade : student.midtermGrade);
-        const finalScore = payloadData.finalScore !== undefined ? payloadData.finalScore : (payloadData.finalGrade !== undefined ? payloadData.finalGrade : student.finalGrade);
-        const homeworkAnalysis = payloadData.homeworkAnalysis !== undefined ? payloadData.homeworkAnalysis : (payloadData.hwAnalysis !== undefined ? payloadData.hwAnalysis : student.hwAnalysis);
-
-        student.midtermGrade = midtermScore;
-        student.finalGrade = finalScore;
-        student.hwAnalysis = homeworkAnalysis;
-
-        if (payloadData.fileData) {
-            student.fileData = payloadData.fileData;
-            student.fileName = payloadData.fileName;
-            student.fileSize = payloadData.fileSize;
-        }
-
-        this.saveData();
+        const payload = {
+            id: `grade_${studentId}_${skill}`,
+            classId: currentClassId,
+            studentId: studentId,
+            studentName: studentName,
+            skill: skill,
+            midtermScore: Number(formData.midtermScore) || 0,
+            finalScore: Number(formData.finalScore) || 0,
+            homeworkAnalysis: formData.homeworkAnalysis || '',
+            fileUrl: formData.fileUrl || '',
+            fileName: formData.fileName || '',
+            teacherName: currentUser.name || currentUser.username || 'Öğretmen',
+            teacherId: String(currentUser.id || ''),
+            updatedAt: new Date().toISOString()
+        };
 
         if (supabaseClient) {
-            try {
-                // 1. Upsert to students table
-                const studentPayload = {
-                    id: student.id,
-                    classId: currentClassId,
-                    name: student.name,
-                    midtermGrade: student.midtermGrade,
-                    finalGrade: student.finalGrade,
-                    hwAnalysis: student.hwAnalysis,
-                    fileName: student.fileName || null,
-                    fileSize: student.fileSize || null,
-                    fileData: student.fileData || null
-                };
-                const { error: studErr } = await supabaseClient.from('students').upsert([studentPayload]);
-                if (studErr) console.error("Supabase student upsert error:", studErr);
-
-                // 2. Upsert to exam_grades table
-                const gradePayload = {
-                    id: `grade_${targetStudentId}_${currentClassId}`,
-                    classId: currentClassId,
-                    studentId: targetStudentId,
-                    studentName: student.name,
-                    examTitle: `Vize: ${midtermScore ?? '-'} / Final: ${finalScore ?? '-'}`,
-                    score: finalScore !== undefined && finalScore !== null ? finalScore : (midtermScore || 0),
-                    feedback: homeworkAnalysis || '',
-                    teacherName: currentUser?.name || 'Öğretmen',
-                    authorId: currentUser ? String(currentUser.id) : null,
-                    createdAt: new Date().toISOString()
-                };
-
-                const { error: gradeErr } = await supabaseClient.from('exam_grades').upsert([gradePayload]);
-                if (gradeErr) {
-                    console.error("Not kaydetme hatası:", gradeErr);
-                    this.showToast("Buluta kaydedilemedi: " + gradeErr.message, "error");
-                    return;
-                }
-            } catch (err) {
-                console.error("Supabase save exam error:", err);
+            const { error } = await supabaseClient.from('exam_grades').upsert([payload]);
+            if (error) {
+                console.error("Buluta kaydedilemedi:", error);
+                this.showToast("Buluta kaydedilemedi: " + error.message, "error");
+                return;
             }
         }
 
-        this.showToast(`${student.name} sınav notları ve ödev analizi güncellendi.`, "success");
+        this.showToast(`${studentName} — ${skill} notu ve analizi başarıyla kaydedildi.`, "success");
         this.closeExamModal();
         await this.renderGradesTab();
+    }
+
+    saveStudentExamAnalysis(studentId, payloadData) {
+        const skill = payloadData.skill || 'Reading';
+        return this.saveSkillGradeModal(studentId, skill, payloadData);
+    }
+
+    async handleSaveExam(e) {
+        if (e) e.preventDefault();
+        const studentId = document.getElementById('modalExamStudentId').value;
+        const skill = document.getElementById('modalExamSkill')?.value || 'Reading';
+        const midtermVal = document.getElementById('modalExamMidterm').value;
+        const finalVal = document.getElementById('modalExamFinal').value;
+        const analysis = document.getElementById('modalExamHwAnalysis').value.trim();
+
+        await this.saveSkillGradeModal(studentId, skill, {
+            midtermScore: midtermVal !== '' ? Number(midtermVal) : 0,
+            finalScore: finalVal !== '' ? Number(finalVal) : 0,
+            homeworkAnalysis: analysis,
+            fileUrl: this.pendingExamFileData || '',
+            fileName: this.pendingExamFileName || ''
+        });
+    }
+
+    downloadStudentExamFile(studentId, skill) {
+        const gradeKey = `grade_${studentId}_${skill}`;
+        const item = (this.data.skillsGradesMap && this.data.skillsGradesMap.get(gradeKey)) || {};
+
+        const fileData = item.fileUrl || (this.data.students && this.data.students.find(s=>s.id===studentId)?.fileData);
+        const fileName = item.fileName || (this.data.students && this.data.students.find(s=>s.id===studentId)?.fileName) || `${skill}_Rapor`;
+
+        if (!fileData) {
+            this.showToast("İndirilebilir dosya bulunamadı!", "error");
+            return;
+        }
+
+        const link = document.createElement('a');
+        link.href = fileData;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        this.showToast(`📁 ${fileName} indirmesi başlatıldı.`, "success");
     }
 
     async handleSaveExam(e) {
