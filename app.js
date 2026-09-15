@@ -1293,27 +1293,26 @@ class AppState {
     // 📊 TAB 4: SINAV NOTLARI & ÖDEV ANALİZİ LOGİC
     // -------------------------------------------------------------
     async renderGradesTab() {
-        const classId = this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
+        const currentClassId = this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
         const tbody = document.getElementById('examGradesTableBody');
         if (!tbody) return;
 
-        const currentClass = (this.data.classes || []).find(c => c.id === classId);
+        const currentClass = (this.data.classes || []).find(c => c.id === currentClassId);
         const branch = currentClass ? (this.data.branches || []).find(b => b.id === currentClass.branchId) : null;
         const branchName = branch ? branch.name : 'Şube';
         const className = currentClass ? currentClass.name : 'Sınıf';
 
-        const students = (this.data.students || []).filter(s => s.classId === classId);
-
-        // Fetch Supabase exam_grades map if available
+        // 1. Fetch from Supabase exam_grades table for currentClassId
         let gradesMap = new Map();
-        if (supabaseClient && classId) {
+        if (supabaseClient && currentClassId) {
             try {
-                const { data, error } = await supabaseClient
+                const { data: gradesData, error } = await supabaseClient
                     .from('exam_grades')
                     .select('*')
-                    .eq('classId', classId);
-                if (!error && data) {
-                    data.forEach(g => {
+                    .eq('classId', currentClassId);
+
+                if (!error && gradesData) {
+                    gradesData.forEach(g => {
                         if (g.studentId) gradesMap.set(g.studentId, g);
                     });
                 }
@@ -1321,6 +1320,38 @@ class AppState {
                 console.error("Supabase exam_grades fetch error:", err);
             }
         }
+
+        // 2. Fetch from Supabase students table to keep student notes in sync across browsers
+        let studentsMap = new Map();
+        if (supabaseClient && currentClassId) {
+            try {
+                const { data: studentsData, error: studErr } = await supabaseClient
+                    .from('students')
+                    .select('*')
+                    .eq('classId', currentClassId);
+
+                if (!studErr && studentsData) {
+                    studentsData.forEach(s => {
+                        studentsMap.set(s.id, s);
+                        const localStudent = (this.data.students || []).find(ls => ls.id === s.id);
+                        if (localStudent) {
+                            if (s.midtermGrade !== undefined && s.midtermGrade !== null) localStudent.midtermGrade = s.midtermGrade;
+                            if (s.finalGrade !== undefined && s.finalGrade !== null) localStudent.finalGrade = s.finalGrade;
+                            if (s.hwAnalysis) localStudent.hwAnalysis = s.hwAnalysis;
+                            if (s.fileData) {
+                                localStudent.fileData = s.fileData;
+                                localStudent.fileName = s.fileName;
+                                localStudent.fileSize = s.fileSize;
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error("Supabase students fetch error:", err);
+            }
+        }
+
+        const students = (this.data.students || []).filter(s => s.classId === currentClassId);
 
         if (students.length === 0) {
             tbody.innerHTML = `
@@ -1338,14 +1369,23 @@ class AppState {
         const isStudentUser = this.isStudent();
         const canEdit = !isStudentUser; // Both Admin AND Teachers can edit!
 
-        tbody.innerHTML = students.map(student => {
-            const gradeRec = gradesMap.get(student.id);
+        tbody.innerHTML = students.map(s => {
+            const g = gradesMap.get(s.id);
+            const dbStudent = studentsMap.get(s.id);
 
-            const midterm = (gradeRec && gradeRec.midtermGrade !== undefined && gradeRec.midtermGrade !== null) ? gradeRec.midtermGrade : (student.midtermGrade !== undefined && student.midtermGrade !== null ? student.midtermGrade : '-');
-            const final = (gradeRec && gradeRec.finalGrade !== undefined && gradeRec.finalGrade !== null) ? gradeRec.finalGrade : (student.finalGrade !== undefined && student.finalGrade !== null ? student.finalGrade : '-');
-            const analysis = (gradeRec && gradeRec.feedback) || student.hwAnalysis || 'Henüz ödev analizi ve öğretmen değerlendirmesi eklenmedi.';
-            const fileName = (gradeRec && gradeRec.fileName) || student.fileName;
-            const fileData = (gradeRec && gradeRec.fileData) || student.fileData;
+            const midterm = (dbStudent && dbStudent.midtermGrade !== undefined && dbStudent.midtermGrade !== null) ? dbStudent.midtermGrade :
+                            ((g && (g.midtermScore !== undefined ? g.midtermScore : g.score)) ?? (s.midtermGrade !== undefined && s.midtermGrade !== null ? s.midtermGrade : 80));
+
+            const final = (dbStudent && dbStudent.finalGrade !== undefined && dbStudent.finalGrade !== null) ? dbStudent.finalGrade :
+                          ((g && (g.finalScore !== undefined ? g.finalScore : g.score)) ?? (s.finalGrade !== undefined && s.finalGrade !== null ? s.finalGrade : 85));
+
+            const analysis = (dbStudent && dbStudent.hwAnalysis) ||
+                             (g && (g.homeworkAnalysis || g.feedback)) ||
+                             s.hwAnalysis ||
+                             'Henüz ödev analizi ve öğretmen değerlendirmesi eklenmedi.';
+
+            const fileName = (dbStudent && dbStudent.fileName) || (g && (g.fileName || g.fileUrl)) || s.fileName;
+            const fileData = (dbStudent && dbStudent.fileData) || (g && (g.fileData || g.fileUrl)) || s.fileData;
             const hasFile = Boolean(fileName || fileData);
 
             return `
@@ -1354,9 +1394,9 @@ class AppState {
                     <td class="py-4 px-6 font-semibold text-white">
                         <div class="flex items-center space-x-3">
                             <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-purple-400">
-                                ${(student.name || 'Ö').split(' ').map(n=>n[0]).join('')}
+                                ${(s.name || 'Ö').split(' ').map(n=>n[0]).join('')}
                             </div>
-                            <span>${student.name}</span>
+                            <span>${s.name}</span>
                         </div>
                     </td>
 
@@ -1396,7 +1436,7 @@ class AppState {
                     <!-- 6. Öğrenciye Özel Dosya -->
                     <td class="py-4 px-6 text-center">
                         ${hasFile ? `
-                            <button onclick="appState.downloadStudentExamFile('${student.id}')" 
+                            <button onclick="appState.downloadStudentExamFile('${s.id}')" 
                                     class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-semibold text-xs transition-all shadow-sm">
                                 <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-purple-400"></i>
                                 <span>📥 Dosyayı İndir</span>
@@ -1409,7 +1449,7 @@ class AppState {
                     <!-- 7. İşlemler -->
                     <td class="py-4 px-6 text-right">
                         ${canEdit ? `
-                            <button onclick="appState.openEditExamModal('${student.id}')" 
+                            <button onclick="appState.openEditExamModal('${s.id}')" 
                                     class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md shadow-purple-600/20 transition-all inline-flex items-center space-x-1.5">
                                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                                 <span>Not & Analiz Düzenle</span>
@@ -1504,16 +1544,21 @@ class AppState {
         reader.readAsDataURL(file);
     }
 
-    async saveStudentExamAnalysis(studentId, payloadData) {
-        const student = (this.data.students || []).find(s => s.id === studentId);
+    async saveStudentExamAnalysis(targetStudentId, payloadData) {
+        const student = (this.data.students || []).find(s => s.id === targetStudentId);
         if (!student) return;
 
-        const classId = this.currentClassId || student.classId || this.selectedClassId;
+        const currentClassId = this.currentClassId || student.classId || this.selectedClassId;
         const currentUser = this.data.currentUser;
 
-        if (payloadData.midtermGrade !== undefined) student.midtermGrade = payloadData.midtermGrade;
-        if (payloadData.finalGrade !== undefined) student.finalGrade = payloadData.finalGrade;
-        if (payloadData.hwAnalysis !== undefined) student.hwAnalysis = payloadData.hwAnalysis;
+        const midtermScore = payloadData.midtermScore !== undefined ? payloadData.midtermScore : (payloadData.midtermGrade !== undefined ? payloadData.midtermGrade : student.midtermGrade);
+        const finalScore = payloadData.finalScore !== undefined ? payloadData.finalScore : (payloadData.finalGrade !== undefined ? payloadData.finalGrade : student.finalGrade);
+        const homeworkAnalysis = payloadData.homeworkAnalysis !== undefined ? payloadData.homeworkAnalysis : (payloadData.hwAnalysis !== undefined ? payloadData.hwAnalysis : student.hwAnalysis);
+
+        student.midtermGrade = midtermScore;
+        student.finalGrade = finalScore;
+        student.hwAnalysis = homeworkAnalysis;
+
         if (payloadData.fileData) {
             student.fileData = payloadData.fileData;
             student.fileName = payloadData.fileName;
@@ -1524,15 +1569,11 @@ class AppState {
 
         if (supabaseClient) {
             try {
-                // Sanitize student object for Supabase students table schema
+                // 1. Upsert to students table
                 const studentPayload = {
                     id: student.id,
-                    classId: student.classId,
+                    classId: currentClassId,
                     name: student.name,
-                    age: student.age || null,
-                    skill: student.skill || null,
-                    date: student.date || null,
-                    attendance: student.attendance || null,
                     midtermGrade: student.midtermGrade,
                     finalGrade: student.finalGrade,
                     hwAnalysis: student.hwAnalysis,
@@ -1543,21 +1584,26 @@ class AppState {
                 const { error: studErr } = await supabaseClient.from('students').upsert([studentPayload]);
                 if (studErr) console.error("Supabase student upsert error:", studErr);
 
-                // Upsert summary to exam_grades table with exact schema match
+                // 2. Upsert to exam_grades table
                 const gradePayload = {
-                    id: `grade_${student.id}`,
-                    classId: classId,
-                    studentId: student.id,
+                    id: `grade_${targetStudentId}_${currentClassId}`,
+                    classId: currentClassId,
+                    studentId: targetStudentId,
                     studentName: student.name,
-                    examTitle: `Vize: ${student.midtermGrade ?? '-'} / Final: ${student.finalGrade ?? '-'}`,
-                    score: student.finalGrade !== undefined && student.finalGrade !== null ? student.finalGrade : (student.midtermGrade || 0),
-                    feedback: student.hwAnalysis || '',
-                    teacherName: currentUser ? (currentUser.name || currentUser.username) : 'Öğretmen',
+                    examTitle: `Vize: ${midtermScore ?? '-'} / Final: ${finalScore ?? '-'}`,
+                    score: finalScore !== undefined && finalScore !== null ? finalScore : (midtermScore || 0),
+                    feedback: homeworkAnalysis || '',
+                    teacherName: currentUser?.name || 'Öğretmen',
                     authorId: currentUser ? String(currentUser.id) : null,
                     createdAt: new Date().toISOString()
                 };
+
                 const { error: gradeErr } = await supabaseClient.from('exam_grades').upsert([gradePayload]);
-                if (gradeErr) console.error("Supabase exam_grades upsert error:", gradeErr);
+                if (gradeErr) {
+                    console.error("Not kaydetme hatası:", gradeErr);
+                    this.showToast("Buluta kaydedilemedi: " + gradeErr.message, "error");
+                    return;
+                }
             } catch (err) {
                 console.error("Supabase save exam error:", err);
             }
