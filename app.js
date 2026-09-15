@@ -1434,12 +1434,16 @@ class AppState {
                                     <textarea id="inp-ana-${student.id}-${sk.key}" maxlength="300" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-xs resize-none">${analysis === 'Henüz değerlendirme eklenmedi.' ? '' : analysis}</textarea>
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] text-slate-400 mb-1">Dosya Linki</label>
-                                    <input type="url" id="inp-file-${student.id}-${sk.key}" value="${fileUrl}" placeholder="https://..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-xs">
+                                    <label class="block text-[11px] text-slate-400 mb-1">Bilgisayardan Dosya / Materyal Yükle (PDF, Ses, Görsel)</label>
+                                    <div class="flex items-center gap-3">
+                                        <input type="file" id="inp-file-${student.id}-${sk.key}" class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 cursor-pointer bg-slate-950 border border-slate-700 rounded-lg p-1">
+                                        ${fileUrl ? `<a href="${fileUrl}" target="_blank" class="text-xs text-teal-400 hover:underline whitespace-nowrap flex items-center gap-1"><i data-lucide="external-link" class="w-3.5 h-3.5"></i>Mevcut Dosya</a>` : ''}
+                                    </div>
+                                    <input type="hidden" id="inp-existing-file-${student.id}-${sk.key}" value="${fileUrl || ''}">
                                 </div>
                                 <div class="flex justify-end gap-2 pt-1">
                                     <button onclick="appState.toggleInlineGradeEdit('${editPanelId}')" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">Vazgeç</button>
-                                    <button onclick="appState.saveInlineGrade('${student.id}', '${cleanStudentName}', '${sk.key}', '${currentClassId}')" class="px-4 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Kaydet</button>
+                                    <button onclick="appState.saveInlineGrade('${student.id}', '${cleanStudentName}', '${sk.key}', '${currentClassId}', event)" class="px-4 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">Kaydet</button>
                                 </div>
                             </div>
                         </div>
@@ -1488,16 +1492,57 @@ class AppState {
         if (el) el.classList.toggle('hidden');
     }
 
-    async saveInlineGrade(studentId, studentName, skillKey, classId) {
+    async saveInlineGrade(studentId, studentName, skillKey, classId, event) {
         const midInput = document.getElementById(`inp-mid-${studentId}-${skillKey}`);
         const finInput = document.getElementById(`inp-fin-${studentId}-${skillKey}`);
         const anaInput = document.getElementById(`inp-ana-${studentId}-${skillKey}`);
         const fileInput = document.getElementById(`inp-file-${studentId}-${skillKey}`);
+        const existingFileUrl = document.getElementById(`inp-existing-file-${studentId}-${skillKey}`)?.value || '';
 
         const midVal = midInput && midInput.value.trim() !== '' ? Number(midInput.value) : null;
         const finVal = finInput && finInput.value.trim() !== '' ? Number(finInput.value) : null;
         const anaVal = anaInput ? anaInput.value.trim() : '';
-        const fileVal = fileInput ? fileInput.value.trim() : '';
+
+        let uploadedFileUrl = existingFileUrl;
+
+        // Eğer bilgisayardan yeni bir dosya seçildiyse:
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${classId}_${studentId}_${skillKey}_${Date.now()}.${fileExt}`;
+            const filePath = `exam_submissions/${fileName}`;
+
+            // Kaydedilirken butonu bilgilendirme moduna al
+            const saveBtn = event?.target || (event && event.currentTarget);
+            const originalText = saveBtn ? saveBtn.innerText : 'Kaydet';
+            if (saveBtn) saveBtn.innerText = "Yükleniyor...";
+
+            try {
+                let { data: uploadData, error: uploadError } = await supabaseClient
+                    .storage
+                    .from('materials')
+                    .upload(filePath, file, { upsert: true });
+
+                if (uploadError) {
+                    console.warn("Storage upload uyarısı 'materials', fallback deneniyor:", uploadError);
+                    const fallbackRes = await supabaseClient
+                        .storage
+                        .from('exam-files')
+                        .upload(filePath, file, { upsert: true });
+                    if (!fallbackRes.error) {
+                        const { data: urlData } = supabaseClient.storage.from('exam-files').getPublicUrl(filePath);
+                        uploadedFileUrl = urlData?.publicUrl || uploadedFileUrl;
+                    }
+                } else {
+                    const { data: urlData } = supabaseClient.storage.from('materials').getPublicUrl(filePath);
+                    uploadedFileUrl = urlData?.publicUrl || uploadedFileUrl;
+                }
+            } catch (err) {
+                console.error("Storage upload hatası:", err);
+            } finally {
+                if (saveBtn) saveBtn.innerText = originalText;
+            }
+        }
 
         const payload = {
             id: `grade_${studentId}_${skillKey}`,
@@ -1508,7 +1553,7 @@ class AppState {
             midtermScore: midVal,
             finalScore: finVal,
             homeworkAnalysis: anaVal,
-            fileUrl: fileVal,
+            fileUrl: uploadedFileUrl,
             teacherName: this.data.currentUser?.name || 'Öğretmen',
             teacherId: String(this.data.currentUser?.id || ''),
             updatedAt: new Date().toISOString()
