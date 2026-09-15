@@ -683,100 +683,106 @@ class AppState {
     // EKRAN 1: LANDING SCREEN RENDER
     // -------------------------------------------------------------
     renderLandingScreen() {
+        // Sınıfları şube ve isim bazında tekilleştir:
         const uniqueClasses = Array.from(
-            new Map(
-                (this.data?.classes || []).map(c => [`${c.branchId || c.branch}_${(c.name || '').trim().toLowerCase()}`, c])
-            ).values()
+          new Map(
+            (this.data.classes || []).map(c => [
+              `${(c.branchId || c.branch || '').toLowerCase().trim()}_${(c.name || '').toLowerCase().trim()}`,
+              c
+            ])
+          ).values()
         );
+
+        // Öğrencileri isim ve sınıf adı/id bazında tekilleştir:
         const uniqueStudents = Array.from(
-            new Map(
-                (this.data?.students || []).map(s => [`${(s.name || '').trim().toLowerCase()}_${s.classId || s.className || ''}`, s])
-            ).values()
+          new Map(
+            (this.data.students || []).map(s => [
+              `${(s.name || '').toLowerCase().trim()}_${(s.classId || s.className || '').toLowerCase().trim()}`,
+              s
+            ])
+          ).values()
         );
 
         const totalClasses = uniqueClasses.length;
         const totalStudents = uniqueStudents.length;
-        document.getElementById('landingTotalClasses').textContent = `${totalClasses} Eğitim Sınıfı`;
-        document.getElementById('landingTotalStudents').textContent = `${totalStudents} Kayıtlı Öğrenci`;
+
+        const landingTotalClassesEl = document.getElementById('landingTotalClasses');
+        if (landingTotalClassesEl) landingTotalClassesEl.textContent = `${totalClasses} Eğitim Sınıfı`;
+
+        const landingTotalStudentsEl = document.getElementById('landingTotalStudents');
+        if (landingTotalStudentsEl) landingTotalStudentsEl.textContent = `${totalStudents} Kayıtlı Öğrenci`;
 
         const container = document.getElementById('branchCardsContainer');
-        container.innerHTML = this.data.branches.map(branch => {
-            const branchClasses = uniqueClasses.filter(c => c.branchId === branch.id);
+        if (container && this.data.branches) {
+          container.innerHTML = this.data.branches.map(branch => {
+            const branchClasses = uniqueClasses.filter(c => (c.branchId === branch.id || c.branch === branch.id));
             const branchClassIds = branchClasses.map(c => c.id);
             const branchStudentCount = uniqueStudents.filter(s => branchClassIds.includes(s.classId)).length;
             const hasPermission = this.hasBranchPermission(branch.id);
             const isLoggedIn = !!this.data.currentUser;
 
             return `
-                <div onclick="appState.navigateTo('branch', { branchId: '${branch.id}' })" 
-                     class="group relative overflow-hidden rounded-3xl bg-slate-900 border ${isLoggedIn && hasPermission ? 'border-slate-800 hover:border-teal-500/50' : 'border-slate-800/60 opacity-95'} shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer flex flex-col justify-between">
-                    
-                    <!-- Branch Image Banner -->
-                    <div class="relative h-56 w-full overflow-hidden">
-                        <img src="${branch.image}" alt="${branch.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
-                        
-                        <!-- Status Badge -->
-                        <div class="absolute top-4 right-4 flex items-center space-x-2">
-                            ${!isLoggedIn ? `
-                                <span class="px-3 py-1 rounded-full bg-slate-950/90 text-amber-300 text-xs font-semibold border border-amber-500/40 flex items-center space-x-1 shadow-lg">
-                                    <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-                                    <span>Giriş Yapılmalı</span>
-                                </span>
-                            ` : hasPermission ? `
-                                <span class="px-3 py-1 rounded-full bg-slate-950/80 text-teal-300 text-xs font-semibold border border-teal-500/30 flex items-center space-x-1">
-                                    <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i>
-                                    <span>Erişilebilir Şube</span>
-                                </span>
-                            ` : `
-                                <span class="px-3 py-1 rounded-full bg-slate-950/80 text-rose-300 text-xs font-semibold border border-rose-500/30 flex items-center space-x-1">
-                                    <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-rose-400"></i>
-                                    <span>Yetkisiz Şube</span>
-                                </span>
-                            `}
-                        </div>
-                    </div>
-
-                    <!-- Branch Content -->
-                    <div class="p-6 space-y-4 flex-grow flex flex-col justify-between">
-                        <div>
-                            <h3 class="font-heading text-2xl font-bold text-white group-hover:text-teal-300 transition-colors flex items-center justify-between">
-                                <span>${branch.name}</span>
-                                <i data-lucide="arrow-right" class="w-5 h-5 text-slate-400 group-hover:text-teal-400 group-hover:translate-x-1 transition-all"></i>
-                            </h3>
-                            <p class="text-sm text-slate-400 mt-2 line-clamp-2 leading-relaxed">
-                                ${branch.description}
-                            </p>
-                        </div>
-
-                        <!-- Stats Bar -->
-                        <div class="pt-4 border-t border-slate-800/80 grid grid-cols-2 gap-4">
-                            <div class="bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
-                                <span class="text-[11px] text-slate-400 block font-medium">Toplam Sınıf</span>
-                                <span class="text-lg font-bold text-white flex items-center space-x-1">
-                                    <i data-lucide="book-open" class="w-4 h-4 text-indigo-400"></i>
-                                    <span>${branchClasses.length} Sınıf</span>
-                                </span>
-                            </div>
-                            <div class="bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
-                                <span class="text-[11px] text-slate-400 block font-medium">Aktif Öğrenci</span>
-                                <span class="text-lg font-bold text-teal-300 flex items-center space-x-1">
-                                    <i data-lucide="users" class="w-4 h-4 text-teal-400"></i>
-                                    <span>${branchStudentCount} Öğrenci</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Action Link Button -->
-                        <button class="w-full mt-4 py-3 rounded-xl bg-slate-800 group-hover:bg-teal-600 text-slate-200 group-hover:text-white font-semibold text-sm transition-all duration-300 flex items-center justify-center space-x-2 shadow-md">
-                            <span>${!isLoggedIn ? 'Giriş Yaparak Sınıflara Eriş →' : 'Sınıfları & Yoklama Listesini Gör'}</span>
-                        </button>
-                    </div>
+              <div onclick="appState.navigateTo('branch', { branchId: '${branch.id}' })"
+                   class="group relative overflow-hidden rounded-3xl bg-slate-900 border ${isLoggedIn && hasPermission ? 'border-slate-800 hover:border-teal-500/50' : 'border-slate-800/60 opacity-95'} shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer flex flex-col justify-between">
+                <div class="relative h-56 w-full overflow-hidden">
+                  <img src="${branch.image}" alt="${branch.name}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                  <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
+                  <div class="absolute top-4 right-4 flex items-center space-x-2">
+                    ${!isLoggedIn ? `
+                      <span class="px-3 py-1 rounded-full bg-slate-950/90 text-amber-300 text-xs font-semibold border border-amber-500/40 flex items-center space-x-1 shadow-lg">
+                        <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+                        <span>Giriş Yapılmalı</span>
+                      </span>
+                    ` : hasPermission ? `
+                      <span class="px-3 py-1 rounded-full bg-slate-950/80 text-teal-300 text-xs font-semibold border border-teal-500/30 flex items-center space-x-1">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                        <span>Erişilebilir Şube</span>
+                      </span>
+                    ` : `
+                      <span class="px-3 py-1 rounded-full bg-slate-950/80 text-rose-300 text-xs font-semibold border border-rose-500/30 flex items-center space-x-1">
+                        <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
+                        <span>Yetki Dışı</span>
+                      </span>
+                    `}
+                  </div>
                 </div>
+                <div class="p-6">
+                  <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xl font-bold text-white group-hover:text-teal-400 transition-colors">${branch.name}</h3>
+                    <i data-lucide="arrow-right" class="w-5 h-5 text-slate-500 group-hover:text-teal-400 group-hover:translate-x-1 transition-all"></i>
+                  </div>
+                  <p class="text-sm text-slate-400 mb-6 line-clamp-2">${branch.description}</p>
+                  <div class="grid grid-cols-2 gap-3 pt-4 border-t border-slate-800/80">
+                    <div class="bg-slate-950/50 rounded-xl p-3 border border-slate-800">
+                      <span class="text-xs text-slate-400 block mb-1">Toplam Sınıf</span>
+                      <span class="text-base font-bold text-white flex items-center space-x-1.5">
+                        <i data-lucide="book-open" class="w-4 h-4 text-indigo-400"></i>
+                        <span>${branchClasses.length} Sınıf</span>
+                      </span>
+                    </div>
+                    <div class="bg-slate-950/50 rounded-xl p-3 border border-slate-800">
+                      <span class="text-xs text-slate-400 block mb-1">Aktif Öğrenci</span>
+                      <span class="text-base font-bold text-white flex items-center space-x-1.5">
+                        <i data-lucide="users" class="w-4 h-4 text-teal-400"></i>
+                        <span>${branchStudentCount} Öğrenci</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="px-6 pb-6 pt-0">
+                  <button class="w-full py-3 rounded-xl bg-slate-800/80 hover:bg-teal-600 text-white font-medium text-sm transition-colors border border-slate-700/60 hover:border-teal-500 flex items-center justify-center space-x-2">
+                    <span>${isLoggedIn ? 'Sınıfları & Yoklama Listesini Gör' : 'Giriş Yapılarak Sınıflara Eriş'}</span>
+                    <i data-lucide="${isLoggedIn ? 'calendar' : 'arrow-right'}" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
             `;
-        }).join('');
+          }).join('');
 
-        if (window.lucide) window.lucide.createIcons();
+          if (window.lucide) {
+            lucide.createIcons();
+          }
+        }
     }
 
     isAdmin() {
