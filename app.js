@@ -1294,73 +1294,134 @@ class AppState {
     // -------------------------------------------------------------
     async renderGradesTab() {
         const classId = this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
-        const container = document.getElementById('gradesListContainer') || document.getElementById('gradesTableBody') || document.getElementById('examGradesTableBody');
-        if (!container) return;
+        const tbody = document.getElementById('examGradesTableBody');
+        if (!tbody) return;
 
-        let list = [];
+        const currentClass = (this.data.classes || []).find(c => c.id === classId);
+        const branch = currentClass ? (this.data.branches || []).find(b => b.id === currentClass.branchId) : null;
+        const branchName = branch ? branch.name : 'Şube';
+        const className = currentClass ? currentClass.name : 'Sınıf';
+
+        const students = (this.data.students || []).filter(s => s.classId === classId);
+
+        // Fetch Supabase exam_grades map if available
+        let gradesMap = new Map();
         if (supabaseClient && classId) {
             try {
                 const { data, error } = await supabaseClient
                     .from('exam_grades')
                     .select('*')
-                    .eq('classId', classId)
-                    .order('createdAt', { ascending: false });
-
+                    .eq('classId', classId);
                 if (!error && data) {
-                    list = data;
+                    data.forEach(g => {
+                        if (g.studentId) gradesMap.set(g.studentId, g);
+                    });
                 }
             } catch (err) {
                 console.error("Supabase exam_grades fetch error:", err);
             }
         }
 
-        if (list.length === 0) {
-            container.innerHTML = `
-                <div class="p-8 text-center text-slate-500 bg-slate-900 border border-slate-800 rounded-3xl space-y-3">
-                    <i data-lucide="bar-chart-3" class="w-12 h-12 mx-auto text-slate-700 opacity-40"></i>
-                    <p class="font-medium text-white text-base">Henüz Sınav Notu veya Değerlendirme Girilmedi</p>
-                    <p class="text-xs text-slate-400">Bu sınıf için henüz sınav notu veya öğretmen değerlendirmesi eklenmedi.</p>
-                </div>
+        if (students.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="py-12 text-center text-slate-500">
+                        <i data-lucide="bar-chart-3" class="w-10 h-10 mx-auto mb-2 text-slate-600 opacity-40"></i>
+                        <p class="font-medium text-white">Bu Sınıfta Öğrenci Kaydı Bulunamadı</p>
+                    </td>
+                </tr>
             `;
             if (window.lucide) window.lucide.createIcons();
             return;
         }
 
-        const currentUser = this.data.currentUser;
-        container.innerHTML = list.map(item => {
-            const canEdit = currentUser && (
-                currentUser.role === 'admin' || 
-                (item.authorId && String(currentUser.id) === String(item.authorId)) || 
-                (item.teacherName && currentUser.name && item.teacherName.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
-            );
+        const isStudentUser = this.isStudent();
+        const canEdit = !isStudentUser; // Both Admin AND Teachers can edit!
+
+        tbody.innerHTML = students.map(student => {
+            const gradeRec = gradesMap.get(student.id);
+
+            const midterm = (gradeRec && gradeRec.midtermGrade !== undefined && gradeRec.midtermGrade !== null) ? gradeRec.midtermGrade : (student.midtermGrade !== undefined && student.midtermGrade !== null ? student.midtermGrade : '-');
+            const final = (gradeRec && gradeRec.finalGrade !== undefined && gradeRec.finalGrade !== null) ? gradeRec.finalGrade : (student.finalGrade !== undefined && student.finalGrade !== null ? student.finalGrade : '-');
+            const analysis = (gradeRec && gradeRec.feedback) || student.hwAnalysis || 'Henüz ödev analizi ve öğretmen değerlendirmesi eklenmedi.';
+            const fileName = (gradeRec && gradeRec.fileName) || student.fileName;
+            const fileData = (gradeRec && gradeRec.fileData) || student.fileData;
+            const hasFile = Boolean(fileName || fileData);
 
             return `
-                <div class="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-4 mb-3 shadow-lg hover:border-purple-500/40 transition-all">
-                    <div class="flex items-center gap-4 flex-1">
-                        <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex flex-col items-center justify-center text-purple-400 font-bold shrink-0">
-                            <span class="text-base leading-none">${item.score !== null && item.score !== undefined ? item.score : '-'}</span>
-                            <span class="text-[10px] text-slate-500 font-normal">Puan</span>
-                        </div>
-                        <div class="space-y-0.5 min-w-0 flex-1">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <h4 class="text-sm font-bold text-white">${item.studentName || 'Öğrenci'}</h4>
-                                <span class="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-indigo-300 font-medium">${item.examTitle || 'Sınav'}</span>
+                <tr class="hover:bg-slate-800/40 transition-colors">
+                    <!-- 1. Öğrenci Adı -->
+                    <td class="py-4 px-6 font-semibold text-white">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs font-bold text-purple-400">
+                                ${(student.name || 'Ö').split(' ').map(n=>n[0]).join('')}
                             </div>
-                            ${item.feedback ? `<p class="text-xs text-slate-400 leading-relaxed pt-0.5">${item.feedback}</p>` : ''}
-                            <span class="text-[11px] text-slate-500 block pt-1">Ekleyen: <strong class="text-slate-300">${item.teacherName || 'Öğretmen'}</strong></span>
+                            <span>${student.name}</span>
                         </div>
-                    </div>
-                    ${canEdit ? `
-                        <button onclick="appState.deleteGrade('${item.id}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors shrink-0" title="Kaydı Sil">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
-                    ` : `
-                        <span class="px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-[10px] text-slate-400 font-medium flex items-center space-x-1 shrink-0" title="Sadece ${item.teacherName || 'ilgili öğretmen'} silebilir">
-                            <i data-lucide="lock" class="w-3 h-3 text-amber-400"></i>
-                            <span>${item.teacherName || 'Öğretmen'}'a Ait</span>
+                    </td>
+
+                    <!-- 2. Şube / Sınıf -->
+                    <td class="py-4 px-4 text-xs font-medium text-slate-300">
+                        <div class="space-y-0.5">
+                            <span class="block text-slate-400">${branchName}</span>
+                            <span class="inline-block px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[11px] font-semibold text-slate-200">
+                                ${className}
+                            </span>
+                        </div>
+                    </td>
+
+                    <!-- 3. Dönem Ortası Notu -->
+                    <td class="py-4 px-4 text-center">
+                        <span class="px-3 py-1 rounded-xl bg-purple-500/10 text-purple-300 border border-purple-500/30 text-xs font-bold font-mono">
+                            ${midterm !== '-' ? `${midterm} / 100` : '-'}
                         </span>
-                    `}
-                </div>
+                    </td>
+
+                    <!-- 4. Sene Sonu Notu -->
+                    <td class="py-4 px-4 text-center">
+                        <span class="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-xs font-bold font-mono">
+                            ${final !== '-' ? `${final} / 100` : '-'}
+                        </span>
+                    </td>
+
+                    <!-- 5. Ödev Analizi & Yorum (Max 300) -->
+                    <td class="py-4 px-6 text-xs text-slate-300 max-w-xs">
+                        <div class="bg-slate-950 p-3 rounded-2xl border border-slate-800 text-slate-300 leading-relaxed relative">
+                            <i data-lucide="quote" class="w-3.5 h-3.5 text-purple-400 mb-1"></i>
+                            <span>${analysis}</span>
+                            <div class="text-[10px] text-slate-500 mt-1 font-mono text-right">${analysis.length} / 300 karakter</div>
+                        </div>
+                    </td>
+
+                    <!-- 6. Öğrenciye Özel Dosya -->
+                    <td class="py-4 px-6 text-center">
+                        ${hasFile ? `
+                            <button onclick="appState.downloadStudentExamFile('${student.id}')" 
+                                    class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-semibold text-xs transition-all shadow-sm">
+                                <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-purple-400"></i>
+                                <span>📥 Dosyayı İndir</span>
+                            </button>
+                        ` : `
+                            <span class="text-[11px] text-slate-500 font-medium italic">Dosya Yüklenmedi</span>
+                        `}
+                    </td>
+
+                    <!-- 7. İşlemler -->
+                    <td class="py-4 px-6 text-right">
+                        ${canEdit ? `
+                            <button onclick="appState.openEditExamModal('${student.id}')" 
+                                    class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md shadow-purple-600/20 transition-all inline-flex items-center space-x-1.5">
+                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                <span>Not & Analiz Düzenle</span>
+                            </button>
+                        ` : `
+                            <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-sky-950/80 border border-sky-800/80 text-[11px] text-sky-300 font-semibold">
+                                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                                <span>Salt Okunur</span>
+                            </span>
+                        `}
+                    </td>
+                </tr>
             `;
         }).join('');
 
@@ -1375,94 +1436,173 @@ class AppState {
         return this.renderGradesTab();
     }
 
-    openAddGradeModal() {
-        if (!this.data.currentUser || this.isStudent()) {
-            this.showToast("Öğrenci hesapları not ve değerlendirme ekleyemez!", "warning");
+    renderExamAnalysisTab() {
+        return this.renderGradesTab();
+    }
+
+    openEditExamModal(studentId) {
+        if (this.isStudent()) {
+            this.showToast("Öğrenciler not ve analiz değiştiremez!", "warning");
             return;
         }
 
-        const select = document.getElementById('modalGradeStudentSelect');
-        if (select) {
-            const currentClassId = this.currentClassId || this.selectedClassId;
-            const students = (this.data.students || []).filter(s => s.classId === currentClassId);
-            select.innerHTML = '<option value="">-- Sınıftaki Öğrenciden Seçin --</option>' + 
-                students.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-        }
+        const student = (this.data.students || []).find(s => s.id === studentId);
+        if (!student) return;
 
-        document.getElementById('modalGradeStudentName').value = '';
-        document.getElementById('modalGradeExamTitle').value = '';
-        document.getElementById('modalGradeScore').value = '';
-        document.getElementById('modalGradeFeedback').value = '';
+        this.pendingExamFileData = student.fileData || null;
+        this.pendingExamFileName = student.fileName || null;
+        this.pendingExamFileSize = student.fileSize || null;
 
-        const modal = document.getElementById('gradeModal');
-        if (modal) modal.classList.remove('hidden');
+        document.getElementById('modalExamStudentId').value = student.id;
+        document.getElementById('modalExamStudentName').value = student.name;
+        document.getElementById('modalExamMidterm').value = student.midtermGrade !== undefined && student.midtermGrade !== null ? student.midtermGrade : 85;
+        document.getElementById('modalExamFinal').value = student.finalGrade !== undefined && student.finalGrade !== null ? student.finalGrade : 90;
+        document.getElementById('modalExamHwAnalysis').value = student.hwAnalysis || '';
+
+        const fileNameDisplay = student.fileName ? `Yüklü: ${student.fileName} (${student.fileSize || ''})` : 'Henüz dosya yüklenmedi';
+        document.getElementById('modalExamFileNameDisplay').textContent = fileNameDisplay;
+
+        this.updateCharCounter();
+
+        document.getElementById('examModal').classList.remove('hidden');
         if (window.lucide) window.lucide.createIcons();
     }
 
-    closeGradeModal() {
-        const modal = document.getElementById('gradeModal');
-        if (modal) modal.classList.add('hidden');
+    closeExamModal() {
+        document.getElementById('examModal').classList.add('hidden');
     }
 
-    async handleGradeSubmit(e) {
-        if (e) e.preventDefault();
-        const studentId = document.getElementById('modalGradeStudentSelect')?.value || '';
-        const studentName = document.getElementById('modalGradeStudentName')?.value.trim() || 'Öğrenci';
-        const examTitle = document.getElementById('modalGradeExamTitle')?.value.trim() || 'Sınav Notu';
-        const score = document.getElementById('modalGradeScore')?.value;
-        const feedback = document.getElementById('modalGradeFeedback')?.value.trim() || '';
+    updateCharCounter() {
+        const textarea = document.getElementById('modalExamHwAnalysis');
+        const counter = document.getElementById('hwAnalysisCharCounter');
+        if (textarea && counter) {
+            const len = textarea.value.length;
+            counter.textContent = `${len} / 300 karakter`;
+            if (len >= 300) {
+                counter.className = "text-[11px] text-rose-400 font-mono font-bold";
+            } else {
+                counter.className = "text-[11px] text-purple-400 font-mono font-semibold";
+            }
+        }
+    }
 
-        await this.saveGradeModal({
-            studentId,
-            studentName,
-            examTitle,
-            score,
-            feedback
+    handleStudentExamFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const sizeKb = Math.round(file.size / 1024);
+        const sizeStr = sizeKb > 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : `${sizeKb} KB`;
+
+        document.getElementById('modalExamFileNameDisplay').textContent = `Seçilen: ${file.name} (${sizeStr})`;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.pendingExamFileData = e.target.result;
+            this.pendingExamFileName = file.name;
+            this.pendingExamFileSize = sizeStr;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async saveStudentExamAnalysis(studentId, payloadData) {
+        const student = (this.data.students || []).find(s => s.id === studentId);
+        if (!student) return;
+
+        const classId = this.currentClassId || student.classId || this.selectedClassId;
+        const currentUser = this.data.currentUser;
+
+        if (payloadData.midtermGrade !== undefined) student.midtermGrade = payloadData.midtermGrade;
+        if (payloadData.finalGrade !== undefined) student.finalGrade = payloadData.finalGrade;
+        if (payloadData.hwAnalysis !== undefined) student.hwAnalysis = payloadData.hwAnalysis;
+        if (payloadData.fileData) {
+            student.fileData = payloadData.fileData;
+            student.fileName = payloadData.fileName;
+            student.fileSize = payloadData.fileSize;
+        }
+
+        this.saveData();
+
+        if (supabaseClient) {
+            try {
+                // Sanitize student object for Supabase students table schema
+                const studentPayload = {
+                    id: student.id,
+                    classId: student.classId,
+                    name: student.name,
+                    age: student.age || null,
+                    skill: student.skill || null,
+                    date: student.date || null,
+                    attendance: student.attendance || null,
+                    midtermGrade: student.midtermGrade,
+                    finalGrade: student.finalGrade,
+                    hwAnalysis: student.hwAnalysis,
+                    fileName: student.fileName || null,
+                    fileSize: student.fileSize || null,
+                    fileData: student.fileData || null
+                };
+                const { error: studErr } = await supabaseClient.from('students').upsert([studentPayload]);
+                if (studErr) console.error("Supabase student upsert error:", studErr);
+
+                // Upsert summary to exam_grades table with exact schema match
+                const gradePayload = {
+                    id: `grade_${student.id}`,
+                    classId: classId,
+                    studentId: student.id,
+                    studentName: student.name,
+                    examTitle: `Vize: ${student.midtermGrade ?? '-'} / Final: ${student.finalGrade ?? '-'}`,
+                    score: student.finalGrade !== undefined && student.finalGrade !== null ? student.finalGrade : (student.midtermGrade || 0),
+                    feedback: student.hwAnalysis || '',
+                    teacherName: currentUser ? (currentUser.name || currentUser.username) : 'Öğretmen',
+                    authorId: currentUser ? String(currentUser.id) : null,
+                    createdAt: new Date().toISOString()
+                };
+                const { error: gradeErr } = await supabaseClient.from('exam_grades').upsert([gradePayload]);
+                if (gradeErr) console.error("Supabase exam_grades upsert error:", gradeErr);
+            } catch (err) {
+                console.error("Supabase save exam error:", err);
+            }
+        }
+
+        this.showToast(`${student.name} sınav notları ve ödev analizi güncellendi.`, "success");
+        this.closeExamModal();
+        await this.renderGradesTab();
+    }
+
+    async handleSaveExam(e) {
+        if (e) e.preventDefault();
+        const studentId = document.getElementById('modalExamStudentId').value;
+        const midtermVal = document.getElementById('modalExamMidterm').value;
+        const finalVal = document.getElementById('modalExamFinal').value;
+        const analysis = document.getElementById('modalExamHwAnalysis').value.trim();
+
+        const midterm = midtermVal !== '' ? parseInt(midtermVal) : null;
+        const final = finalVal !== '' ? parseInt(finalVal) : null;
+
+        await this.saveStudentExamAnalysis(studentId, {
+            midtermGrade: isNaN(midterm) ? null : midterm,
+            finalGrade: isNaN(final) ? null : final,
+            hwAnalysis: analysis,
+            fileData: this.pendingExamFileData,
+            fileName: this.pendingExamFileName,
+            fileSize: this.pendingExamFileSize
         });
     }
 
-    async saveGradeModal(formData) {
-        const classId = this.currentClassId || (this.currentClass && this.currentClass.id) || this.selectedClassId;
-        const currentUser = this.data.currentUser;
-
-        const payload = {
-            id: 'grade-' + Date.now(),
-            classId: classId,
-            studentId: formData.studentId,
-            studentName: formData.studentName,
-            examTitle: formData.examTitle,
-            score: Number(formData.score) || 0,
-            feedback: formData.feedback || '',
-            teacherName: currentUser ? (currentUser.name || currentUser.username) : 'Öğretmen',
-            authorId: currentUser ? String(currentUser.id) : null,
-            createdAt: new Date().toISOString()
-        };
-
-        if (supabaseClient) {
-            const { error } = await supabaseClient.from('exam_grades').upsert([payload]);
-            if (error) {
-                console.error('Not kaydedilemedi:', error);
-                this.showToast('Hata: ' + error.message, 'error');
-                return;
-            }
+    downloadStudentExamFile(studentId) {
+        const student = (this.data.students || []).find(s => s.id === studentId);
+        if (!student || !student.fileData) {
+            this.showToast("İndirilebilir dosya bulunamadı!", "error");
+            return;
         }
 
-        this.showToast('Not / Değerlendirme kaydı başarıyla eklendi.', 'success');
-        this.closeGradeModal();
-        await this.renderGradesTab();
-    }
+        const link = document.createElement('a');
+        link.href = student.fileData;
+        link.download = student.fileName || `${student.name}_Rapor`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-    async deleteGrade(id) {
-        if (!confirm('Bu not kaydını silmek istediğinize emin misiniz?')) return;
-        if (supabaseClient) {
-            const { error } = await supabaseClient.from('exam_grades').delete().eq('id', id);
-            if (error) {
-                this.showToast('Silme hatası: ' + error.message, 'error');
-                return;
-            }
-        }
-        this.showToast('Not kaydı silindi.', 'info');
-        await this.renderGradesTab();
+        this.showToast(`📁 ${student.fileName} indirmesi başlatıldı.`, "success");
     }
 
     openEditExamModal(studentId) {
