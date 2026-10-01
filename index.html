@@ -614,13 +614,29 @@
 
                     <!-- CLASS STUDENT ACCOUNTS TABLE FOR ADMIN -->
                     <div class="space-y-3 pt-4 border-t border-slate-800">
-                        <h4 class="font-heading text-base font-bold text-white flex items-center justify-between">
-                            <span class="flex items-center space-x-2">
-                                <i data-lucide="key" class="w-4 h-4 text-sky-400"></i>
-                                <span>🎓 Sınıf Öğrenci Giriş Hesapları (Admin Değiştirebilir)</span>
-                            </span>
-                            <span class="text-[11px] text-slate-400">Her sınıf için 1 giriş hesabı</span>
-                        </h4>
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h4 class="font-heading text-base font-bold text-white flex items-center space-x-2">
+                                    <i data-lucide="key" class="w-4 h-4 text-sky-400"></i>
+                                    <span>🎓 Sınıf Öğrenci Giriş Hesapları (Admin Değiştirebilir)</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Her sınıf için öğrenci giriş kullanıcı adı ve şifresi belirleyin.</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <div class="relative">
+                                    <input type="text" id="classCredentialSearchInput" placeholder="Sınıf veya şube ara..."
+                                           oninput="appState.handleClassCredentialSearch(this.value)"
+                                           class="pl-8 pr-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 w-44">
+                                    <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5 pointer-events-none"></i>
+                                </div>
+                                <button type="button" onclick="appState.saveAllClassStudentCredentials()"
+                                        id="btnSaveAllCredentials"
+                                        class="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-md shadow-sky-600/20 transition-all inline-flex items-center space-x-1.5 cursor-pointer active:scale-95">
+                                    <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                                    <span>Tümünü Kaydet</span>
+                                </button>
+                            </div>
+                        </div>
 
                         <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
                             <div class="overflow-x-auto">
@@ -1074,6 +1090,6 @@
     <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
 
     <!-- App Logic JS -->
-    <script src="app.js?v=3.1"></script>
+    <script src="app.js?v=3.2"></script>
 </body>
 </html>

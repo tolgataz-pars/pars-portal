@@ -133,6 +133,10 @@ class AppState {
         this.studentAttendanceFilter = 'ALL';
         this.selectedDate = new Date().toISOString().split('T')[0];
 
+        // Class Student Credentials Form State for dynamic live tracking
+        this.classCredentialsFormState = {};
+        this.classCredentialSearchQuery = '';
+
         this.pendingHwFileData = null;
         this.pendingHwFileName = null;
         this.pendingHwFileSize = null;
@@ -227,6 +231,16 @@ class AppState {
                 const uniqueClasses = this.deduplicateClasses(classesRes.data);
                 this.data.classes = uniqueClasses;
                 try { localStorage.setItem('classes', JSON.stringify(uniqueClasses)); } catch(e){}
+
+                // Form state'i de gelen güncel veritabanı verisiyle senkronize et
+                if (!this.classCredentialsFormState) this.classCredentialsFormState = {};
+                uniqueClasses.forEach(cls => {
+                    const cid = String(cls.id);
+                    this.classCredentialsFormState[cid] = {
+                        studentUsername: cls.studentUsername || '',
+                        studentPassword: cls.studentPassword || '12345'
+                    };
+                });
             }
             if (studentsRes.data && studentsRes.data.length > 0) {
                 const uniqueStudents = this.deduplicateStudents(studentsRes.data);
@@ -1079,7 +1093,18 @@ class AppState {
         this.saveData();
 
         if (supabaseClient && targetClass) {
-            const { error } = await supabaseClient.from('classes').upsert([targetClass]);
+            const cleanPayload = {
+                id: String(targetClass.id),
+                branchId: targetClass.branchId || this.selectedBranchId || 'alsancak',
+                name: targetClass.name,
+                level: targetClass.level,
+                teacher: targetClass.teacher,
+                schedule: targetClass.schedule || '',
+                capacity: typeof targetClass.capacity === 'number' ? targetClass.capacity : 15,
+                studentUsername: targetClass.studentUsername || null,
+                studentPassword: targetClass.studentPassword || '12345'
+            };
+            const { error } = await supabaseClient.from('classes').upsert([cleanPayload], { onConflict: 'id' });
             if (error) {
                 console.error("Supabase saveClass error:", error);
                 this.showToast("Sınıf kaydedilirken veritabanı hatası oluştu: " + error.message, "error");
@@ -2750,36 +2775,120 @@ class AppState {
         if (window.lucide) window.lucide.createIcons();
     }
 
-    renderClassStudentAccountsTable() {
+    handleClassCredentialChange(classId, field, value) {
+        if (!classId) return;
+        const cid = String(classId);
+        if (!this.classCredentialsFormState) this.classCredentialsFormState = {};
+        if (!this.classCredentialsFormState[cid]) {
+            this.classCredentialsFormState[cid] = {
+                studentUsername: '',
+                studentPassword: '12345'
+            };
+        }
+
+        const cleanVal = field === 'studentUsername' 
+            ? (value || '').trim().toLowerCase() 
+            : (value || '').trim();
+
+        this.classCredentialsFormState[cid][field] = cleanVal;
+
+        // Ana form ve sınıf veri nesnesini de anında güncelle
+        const target = this.data.classes.find(c => String(c.id) === cid);
+        if (target) {
+            target[field] = cleanVal;
+        }
+    }
+
+    handleClassCredentialSearch(query) {
+        this.classCredentialSearchQuery = query;
+        this.renderClassStudentAccountsTable(query);
+    }
+
+    renderClassStudentAccountsTable(filterQuery = '') {
         const tbody = document.getElementById('classStudentTableBody');
         if (!tbody) return;
 
-        tbody.innerHTML = this.data.classes.map(cls => {
+        if (!this.classCredentialsFormState) this.classCredentialsFormState = {};
+
+        // Mevcut sınıfların state'lerini hazırla
+        this.data.classes.forEach(cls => {
+            const cid = String(cls.id);
+            if (!this.classCredentialsFormState[cid]) {
+                this.classCredentialsFormState[cid] = {
+                    studentUsername: cls.studentUsername || '',
+                    studentPassword: cls.studentPassword || '12345'
+                };
+            }
+        });
+
+        const q = (filterQuery !== undefined ? filterQuery : (this.classCredentialSearchQuery || '')).toLowerCase().trim();
+        const filteredClasses = this.data.classes.filter(cls => {
+            if (!q) return true;
             const branch = this.data.branches.find(b => b.id === cls.branchId);
-            const branchName = branch ? branch.name : cls.branchId;
+            const branchName = branch ? branch.name.toLowerCase() : (cls.branchId || '').toLowerCase();
+            const cName = (cls.name || '').toLowerCase();
+            return cName.includes(q) || branchName.includes(q);
+        });
+
+        if (filteredClasses.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="py-8 text-center text-slate-500 text-xs italic">
+                        Arama kriterinize uygun sınıf bulunamadı.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = filteredClasses.map(cls => {
+            const cid = String(cls.id);
+            const branch = this.data.branches.find(b => b.id === cls.branchId);
+            const branchName = branch ? branch.name : (cls.branchId === 'alsancak' ? 'Alsancak Şubesi' : 'Gaziemir Şubesi');
+            
+            const stateValues = this.classCredentialsFormState[cid] || {};
+            const usernameVal = stateValues.studentUsername !== undefined 
+                ? stateValues.studentUsername 
+                : (cls.studentUsername || '');
+            const passwordVal = stateValues.studentPassword !== undefined 
+                ? stateValues.studentPassword 
+                : (cls.studentPassword || '12345');
+
+            const escapedId = cid.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             return `
-                <tr class="hover:bg-slate-900/60 transition-colors">
+                <tr class="hover:bg-slate-900/60 transition-colors" data-class-row-id="${cid}">
                     <td class="py-3 px-4 font-semibold text-white">
                         <div class="flex items-center space-x-2">
                             <i data-lucide="book-open" class="w-3.5 h-3.5 text-teal-400 shrink-0"></i>
-                            <span class="truncate max-w-[180px]" title="${cls.name}">${cls.name}</span>
+                            <span class="truncate max-w-[190px]" title="${cls.name}">${cls.name}</span>
                         </div>
                     </td>
                     <td class="py-3 px-3 text-slate-300 text-[11px]">
-                        ${branchName}
+                        <span class="px-2 py-0.5 rounded-md ${cls.branchId === 'alsancak' ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' : 'bg-teal-500/10 text-teal-300 border border-teal-500/20'}">
+                            ${branchName}
+                        </span>
                     </td>
                     <td class="py-3 px-3">
-                        <input type="text" id="classUsername-${cls.id}" value="${cls.studentUsername || ''}"
-                               class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-sky-300 font-mono focus:outline-none focus:border-sky-500 w-28">
+                        <input type="text" id="classUsername-${cid}" value="${usernameVal}"
+                               placeholder="kullanıcı adı"
+                               autocomplete="off"
+                               oninput="appState.handleClassCredentialChange('${escapedId}', 'studentUsername', this.value)"
+                               onchange="appState.handleClassCredentialChange('${escapedId}', 'studentUsername', this.value)"
+                               class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-sky-300 font-mono focus:outline-none focus:border-sky-500 w-32 placeholder-slate-600 transition-colors">
                     </td>
                     <td class="py-3 px-3">
-                        <input type="text" id="classPassword-${cls.id}" value="${cls.studentPassword || '12345'}"
-                               class="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500 w-24">
+                        <input type="text" id="classPassword-${cid}" value="${passwordVal}"
+                               placeholder="12345"
+                               autocomplete="off"
+                               oninput="appState.handleClassCredentialChange('${escapedId}', 'studentPassword', this.value)"
+                               onchange="appState.handleClassCredentialChange('${escapedId}', 'studentPassword', this.value)"
+                               class="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500 w-24 placeholder-slate-600 transition-colors">
                     </td>
                     <td class="py-3 px-4 text-right">
-                        <button onclick="appState.quickSaveClassStudentCredentials('${cls.id}')"
-                                class="px-2.5 py-1 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/30 font-semibold text-[11px] transition-all inline-flex items-center space-x-1">
+                        <button id="btnSaveCred-${cid}"
+                                onclick="appState.quickSaveClassStudentCredentials('${escapedId}')"
+                                class="px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/40 text-sky-300 border border-sky-500/30 font-semibold text-[11px] transition-all inline-flex items-center space-x-1.5 cursor-pointer active:scale-95 shadow-sm">
                             <i data-lucide="save" class="w-3 h-3"></i>
                             <span>Kaydet</span>
                         </button>
@@ -2791,33 +2900,253 @@ class AppState {
         if (window.lucide) window.lucide.createIcons();
     }
 
-    quickSaveClassStudentCredentials(classId) {
+    async quickSaveClassStudentCredentials(classId) {
         if (!this.isAdmin()) {
             this.showToast("Bu işlemi yalnızca Yönetici yapabilir!", "error");
             return;
         }
-        const cls = this.data.classes.find(c => c.id === classId);
-        if (!cls) return;
 
-        const usernameInput = document.getElementById(`classUsername-${classId}`);
-        const passwordInput = document.getElementById(`classPassword-${classId}`);
-
-        if (usernameInput && passwordInput) {
-            const u = usernameInput.value.trim().toLowerCase();
-            const p = passwordInput.value.trim();
-
-            if (!u || !p) {
-                this.showToast("Kullanıcı adı ve şifre boş bırakılamaz!", "warning");
-                return;
-            }
-
-            cls.studentUsername = u;
-            cls.studentPassword = p;
-            this.saveData();
-            if (supabaseClient) supabaseClient.from('classes').upsert(cls);
-            this.showToast(`'${cls.name}' öğrenci hesabı güncellendi: ${u} / ${p}`, "success");
-            this.renderClassStudentAccountsTable();
+        const cid = String(classId);
+        const cls = this.data.classes.find(c => String(c.id) === cid);
+        if (!cls) {
+            this.showToast(`Sınıf bulunamadı (ID: ${cid})`, "error");
+            return;
         }
+
+        const usernameInput = document.getElementById(`classUsername-${cid}`);
+        const passwordInput = document.getElementById(`classPassword-${cid}`);
+        const stateObj = (this.classCredentialsFormState && this.classCredentialsFormState[cid]) ? this.classCredentialsFormState[cid] : {};
+
+        let u = (stateObj.studentUsername !== undefined && stateObj.studentUsername !== ''
+            ? stateObj.studentUsername
+            : (usernameInput ? usernameInput.value : (cls.studentUsername || ''))).trim().toLowerCase();
+
+        let p = (stateObj.studentPassword !== undefined && stateObj.studentPassword !== ''
+            ? stateObj.studentPassword
+            : (passwordInput ? passwordInput.value : (cls.studentPassword || '12345'))).trim();
+
+        if (!u) {
+            this.showToast(`'${cls.name}' için kullanıcı adı boş bırakılamaz!`, "warning");
+            if (usernameInput) usernameInput.focus();
+            return;
+        }
+        if (!p) {
+            p = '12345';
+        }
+
+        // State ve lokal veriyi güncelle
+        cls.studentUsername = u;
+        cls.studentPassword = p;
+        if (!this.classCredentialsFormState) this.classCredentialsFormState = {};
+        this.classCredentialsFormState[cid] = { studentUsername: u, studentPassword: p };
+        this.saveData();
+
+        // Buton durumunu 'Kaydediliyor' yap
+        const saveBtn = document.getElementById(`btnSaveCred-${cid}`);
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.classList.add('opacity-70');
+            saveBtn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 animate-spin text-sky-400"></i><span>Kaydediliyor...</span>`;
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        // Temiz Payload oluştur (Sadece veritabanının kabul ettiği kolonlar)
+        // Hem eski sınıflar hem yeni Alsancak sınıfları bu payload ile eksiksiz gönderilir
+        const payload = {
+            id: cid,
+            branchId: cls.branchId || (cls.name && cls.name.toLowerCase().includes('alsancak') ? 'alsancak' : 'gaziemir'),
+            name: cls.name || 'İsimsiz Sınıf',
+            level: cls.level || 'Genel',
+            teacher: cls.teacher || 'Dönüşümlü Kadro',
+            schedule: cls.schedule || '',
+            capacity: typeof cls.capacity === 'number' ? cls.capacity : 15,
+            studentUsername: u,
+            studentPassword: p
+        };
+
+        try {
+            if (supabaseClient) {
+                // 1. Önce UPSERT mantığı ile kaydetmeyi dene (onConflict: 'id')
+                let upsertSuccess = false;
+                const { error: upsertErr } = await supabaseClient
+                    .from('classes')
+                    .upsert([payload], { onConflict: 'id' });
+
+                if (upsertErr) {
+                    console.warn(`UPSERT hatası (${cls.name}), fallback UPDATE/INSERT deneniyor:`, upsertErr);
+
+                    // 2. Fallback: Önce UPDATE dene (sadece kimlik alanlarını güncelle)
+                    const { data: updateData, error: updateErr } = await supabaseClient
+                        .from('classes')
+                        .update({ studentUsername: u, studentPassword: p })
+                        .eq('id', cid)
+                        .select();
+
+                    if (!updateErr && updateData && updateData.length > 0) {
+                        upsertSuccess = true;
+                    } else {
+                        // Kayıt veritabanında yoksa INSERT yap
+                        const { error: insertErr } = await supabaseClient
+                            .from('classes')
+                            .insert([payload])
+                            .select();
+
+                        if (insertErr) {
+                            throw insertErr;
+                        } else {
+                            upsertSuccess = true;
+                        }
+                    }
+                } else {
+                    upsertSuccess = true;
+                }
+
+                if (upsertSuccess) {
+                    this.showToast(`✅ '${cls.name}' giriş hesabı başarıyla kaydedildi: ${u} / ${p}`, "success", 4000);
+                }
+            } else {
+                this.showToast(`'${cls.name}' hesabı yerel olarak kaydedildi (Bulut bağlı değil): ${u}`, "warning");
+            }
+        } catch (dbError) {
+            // 4. Veritabanı hatalarını (RLS, constraint vb.) yakalayıp ekranda bildirim (Toast) olarak göster
+            console.error("Supabase credentials save error:", dbError);
+            const errDetail = dbError.message || dbError.details || dbError.hint || JSON.stringify(dbError);
+            this.showToast(`❌ Veritabanı Kayıt Hatası (${cls.name}): ${errDetail}`, "error", 6000);
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('opacity-70');
+                saveBtn.innerHTML = `<i data-lucide="check" class="w-3 h-3 text-emerald-400"></i><span class="text-emerald-300">Kaydedildi</span>`;
+                if (window.lucide) window.lucide.createIcons();
+
+                setTimeout(() => {
+                    const btn = document.getElementById(`btnSaveCred-${cid}`);
+                    if (btn) {
+                        btn.innerHTML = `<i data-lucide="save" class="w-3 h-3"></i><span>Kaydet</span>`;
+                        if (window.lucide) window.lucide.createIcons();
+                    }
+                }, 2000);
+            }
+        }
+    }
+
+    async saveAllClassStudentCredentials() {
+        if (!this.isAdmin()) {
+            this.showToast("Bu işlemi yalnızca Yönetici yapabilir!", "error");
+            return;
+        }
+
+        const btn = document.getElementById('btnSaveAllCredentials');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Kaydediliyor...</span>`;
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        let successCount = 0;
+        let failCount = 0;
+        const errors = [];
+
+        // Tüm sınıflar için temiz payload'ları hazırla
+        const payloads = [];
+        this.data.classes.forEach(cls => {
+            const cid = String(cls.id);
+            const usernameInput = document.getElementById(`classUsername-${cid}`);
+            const passwordInput = document.getElementById(`classPassword-${cid}`);
+            const stateObj = (this.classCredentialsFormState && this.classCredentialsFormState[cid]) ? this.classCredentialsFormState[cid] : {};
+
+            let u = (stateObj.studentUsername !== undefined && stateObj.studentUsername !== ''
+                ? stateObj.studentUsername
+                : (usernameInput ? usernameInput.value : (cls.studentUsername || ''))).trim().toLowerCase();
+
+            let p = (stateObj.studentPassword !== undefined && stateObj.studentPassword !== ''
+                ? stateObj.studentPassword
+                : (passwordInput ? passwordInput.value : (cls.studentPassword || '12345'))).trim();
+
+            if (u) {
+                cls.studentUsername = u;
+                cls.studentPassword = p || '12345';
+                if (!this.classCredentialsFormState) this.classCredentialsFormState = {};
+                this.classCredentialsFormState[cid] = { studentUsername: u, studentPassword: p || '12345' };
+
+                payloads.push({
+                    id: cid,
+                    branchId: cls.branchId || (cls.name && cls.name.toLowerCase().includes('alsancak') ? 'alsancak' : 'gaziemir'),
+                    name: cls.name || 'İsimsiz Sınıf',
+                    level: cls.level || 'Genel',
+                    teacher: cls.teacher || 'Dönüşümlü Kadro',
+                    schedule: cls.schedule || '',
+                    capacity: typeof cls.capacity === 'number' ? cls.capacity : 15,
+                    studentUsername: u,
+                    studentPassword: p || '12345'
+                });
+            }
+        });
+
+        this.saveData();
+
+        if (payloads.length === 0) {
+            this.showToast("Kaydedilecek geçerli kullanıcı adı bulunamadı!", "warning");
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i><span>Tümünü Kaydet</span>`;
+                if (window.lucide) window.lucide.createIcons();
+            }
+            return;
+        }
+
+        if (supabaseClient) {
+            try {
+                // Toplu UPSERT dene
+                const { error: batchErr } = await supabaseClient
+                    .from('classes')
+                    .upsert(payloads, { onConflict: 'id' });
+
+                if (batchErr) {
+                    console.warn("Toplu UPSERT hatası, tekil deneniyor:", batchErr);
+                    for (const pl of payloads) {
+                        try {
+                            const { error: singleErr } = await supabaseClient
+                                .from('classes')
+                                .upsert([pl], { onConflict: 'id' });
+
+                            if (singleErr) {
+                                const { error: updateErr } = await supabaseClient
+                                    .from('classes')
+                                    .update({ studentUsername: pl.studentUsername, studentPassword: pl.studentPassword })
+                                    .eq('id', pl.id);
+                                if (updateErr) throw updateErr;
+                            }
+                            successCount++;
+                        } catch (err) {
+                            failCount++;
+                            errors.push(`${pl.name}: ${err.message || 'Hata'}`);
+                        }
+                    }
+                } else {
+                    successCount = payloads.length;
+                }
+
+                if (failCount === 0) {
+                    this.showToast(`✅ ${successCount} sınıfın giriş bilgileri başarıyla veritabanına kaydedildi!`, "success", 4000);
+                } else {
+                    this.showToast(`⚠️ ${successCount} sınıf kaydedildi, ${failCount} sınıfta hata: ${errors.join(', ')}`, "error", 7000);
+                }
+            } catch (err) {
+                console.error("Toplu kayıt hatası:", err);
+                this.showToast(`❌ Toplu Kayıt Veritabanı Hatası: ${err.message || err}`, "error", 6000);
+            }
+        } else {
+            this.showToast(`✅ ${payloads.length} sınıf yerel olarak kaydedildi.`, "success");
+        }
+
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i><span>Tümünü Kaydet</span>`;
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        this.renderClassStudentAccountsTable();
     }
 
     saveExportSavePath() {
@@ -3255,12 +3584,12 @@ class AppState {
     }
 
     // Toast Notification System
-    showToast(message, type = 'info') {
+    showToast(message, type = 'info', duration = 3500) {
         const container = document.getElementById('toastContainer');
         if (!container) return;
 
         const toast = document.createElement('div');
-        toast.className = `toast-enter pointer-events-auto flex items-center space-x-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-semibold max-w-sm ${
+        toast.className = `toast-enter pointer-events-auto flex items-center space-x-3 px-4 py-3 rounded-2xl shadow-xl border text-sm font-semibold max-w-md ${
             type === 'success' ? 'bg-slate-900 border-emerald-500/50 text-emerald-300' :
             type === 'warning' ? 'bg-slate-900 border-amber-500/50 text-amber-300' :
             type === 'info' ? 'bg-slate-900 border-indigo-500/50 text-indigo-300' :
@@ -3271,7 +3600,7 @@ class AppState {
         
         toast.innerHTML = `
             <i data-lucide="${iconName}" class="w-5 h-5 shrink-0"></i>
-            <span class="flex-1">${message}</span>
+            <span class="flex-1 break-words">${message}</span>
         `;
 
         container.appendChild(toast);
@@ -3282,7 +3611,7 @@ class AppState {
             toast.style.transform = 'translateY(10px)';
             toast.style.transition = 'all 0.3s ease';
             setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        }, duration);
     }
 }
 
